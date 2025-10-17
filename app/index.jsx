@@ -1,4 +1,5 @@
 import { StyleSheet, Text, View, Image } from 'react-native'
+import { Link } from 'expo-router'
 
 import Logo from '../assets/img/instagram.png'
 
@@ -16,13 +17,19 @@ const Home = () => {
         #1 school supply app trust
       </Text>
 
+      
       <View style = {styles.card}>
-        <Text>cool looking card im a pro</Text>
+        <Link href = "/about">About Page</Link>
+      </View>
+
+      <View style = {styles.card}>
+        <Link href = "/contact">Contact Page</Link>
       </View>
 
 
     </View>
-  )
+    )
+
 }
 
 export default Home
@@ -42,7 +49,8 @@ const styles = StyleSheet.create({
         backgroundColor: '#eee',
         padding: 20,
         borderRadius: 5,
-        boxShadow: '4px 4px rgba(0,0,0,0.1)'
+        boxShadow: '4px 4px rgba(0,0,0,0.1)',
+        marginVertical: 10,
     },
     img: {
         width: 50,
