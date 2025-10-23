@@ -1,12 +1,14 @@
 import { StyleSheet, Text, View, Image } from 'react-native'
 import { Link } from 'expo-router'
 
-import Logo from '../assets/img/instagram.png'
+import Logo from '../assets/img/logo_light.png'
 
+//themed components
+import ThemedView from '../components/ThemedView'
 
 const Home = () => {
   return (
-    <View style={styles.container}>
+    <ThemedView style={styles.container}>
 
       <Image source={Logo} style={styles.img}/>
 
@@ -16,18 +18,13 @@ const Home = () => {
       <Text style = {{marginTop: 10, marginBottom: 13}}>
         #1 school supply app trust
       </Text>
-
       
-      <View style = {styles.card}>
-        <Link href = "/about">About Page</Link>
-      </View>
-
-      <View style = {styles.card}>
-        <Link href = "/contact">Contact Page</Link>
-      </View>
+      <Link href = "/about" style={styles.link}>About Page</Link>    
+      <Link href = "/contact" style={styles.link}>Contact Page</Link>
+      
 
 
-    </View>
+    </ThemedView>
     )
 
 }
@@ -57,5 +54,9 @@ const styles = StyleSheet.create({
         height: 50,
         resizeMode: 'contain',
         marginVertical: 20
-    }
+    },
+    link: {
+      marginVertical: 10,
+      borderBottomWidth: 1
+    },
 })
