@@ -1,6 +1,6 @@
 import { StyleSheet } from 'react-native'
 
-import Spacer from "../../components/Spacer.jsx"
+import Spacer from "../../components/Spacer"
 import ThemedText from "../../components/ThemedText"
 import ThemedView from "../../components/ThemedView"
 
@@ -9,7 +9,7 @@ const Home = () => {
     <ThemedView style={styles.container}>
 
       <ThemedText title={true} style={styles.heading}>
-        Add a New Book
+        Reserved: School Supply App!
       </ThemedText>
       <Spacer />
 
