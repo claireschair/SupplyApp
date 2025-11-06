@@ -7,6 +7,21 @@ const DashboardLayout = () => {
   const colorScheme = useColorScheme();
   const theme = Colors[colorScheme] ?? Colors.light;
 
+  const renderTabIcon = (iconSource, label, focused) => (
+    <View style={styles.iconContainer}>
+      <View style={[styles.iconWrapper, focused && styles.focusedCircle]}>
+        <Image source={iconSource} resizeMode="contain" style={styles.icon} />
+      </View>
+      <Text
+        style={[styles.label, focused && styles.focusedLabel]}
+        numberOfLines={1}
+        ellipsizeMode="tail"
+      >
+        {label}
+      </Text>
+    </View>
+  );
+
   return (
     <Tabs
       screenOptions={{
@@ -17,105 +32,41 @@ const DashboardLayout = () => {
           height: 80,
           paddingTop: 10,
         },
-        tabBarItemStyle: {
-          flex: 1,
-          alignItems: 'center',
-          justifyContent: 'center',
-        },
       }}
     >
-      {/* Home Tab */}
       <Tabs.Screen
         name="home"
         options={{
-          tabBarIcon: ({ focused }) => (
-            <View style={styles.iconContainer}>
-              <Image
-                source={require('../../assets/icons/home.png')}
-                resizeMode="contain"
-                style={styles.icon}
-              />
-              <Text style={[styles.label, { color: focused ? '#e32f45' : '#748c94' }]}>
-                Home
-              </Text>
-            </View>
-          ),
+          tabBarIcon: ({ focused }) =>
+            renderTabIcon(require('../../assets/icons/home.png'), 'Home', focused),
         }}
       />
-
-      {/* Map Tab */}
       <Tabs.Screen
         name="map"
         options={{
-          tabBarIcon: ({ focused }) => (
-            <View style={styles.iconContainer}>
-              <Image
-                source={require('../../assets/icons/map.png')}
-                resizeMode="contain"
-                style={styles.icon}
-              />
-              <Text style={[styles.label, { color: focused ? '#e32f45' : '#748c94' }]}>
-                Map
-              </Text>
-            </View>
-          ),
+          tabBarIcon: ({ focused }) =>
+            renderTabIcon(require('../../assets/icons/map.png'), 'Map', focused),
         }}
       />
-
-      {/* Donate Tab */}
       <Tabs.Screen
         name="donate"
         options={{
-          tabBarIcon: ({ focused }) => (
-            <View style={styles.iconContainer}>
-              <Image
-                source={require('../../assets/icons/donate.png')}
-                resizeMode="contain"
-                style={styles.icon}
-              />
-              <Text style={[styles.label, { color: focused ? '#e32f45' : '#748c94' }]}>
-                Donate
-              </Text>
-            </View>
-          ),
+          tabBarIcon: ({ focused }) =>
+            renderTabIcon(require('../../assets/icons/donate.png'), 'Donate', focused),
         }}
       />
-
-      {/* Receive Tab */}
       <Tabs.Screen
         name="receive"
         options={{
-          tabBarIcon: ({ focused }) => (
-            <View style={styles.iconContainer}>
-              <Image
-                source={require('../../assets/icons/receive.png')}
-                resizeMode="contain"
-                style={styles.icon}
-              />
-              <Text style={[styles.label, { color: focused ? '#e32f45' : '#748c94' }]}>
-                Receive
-              </Text>
-            </View>
-          ),
+          tabBarIcon: ({ focused }) =>
+            renderTabIcon(require('../../assets/icons/receive.png'), 'Receive', focused),
         }}
       />
-
-      {/* Profile Tab */}
       <Tabs.Screen
         name="profile"
         options={{
-          tabBarIcon: ({ focused }) => (
-            <View style={styles.iconContainer}>
-              <Image
-                source={require('../../assets/icons/profile.png')}
-                resizeMode="contain"
-                style={styles.icon}
-              />
-              <Text style={[styles.label, { color: focused ? '#e32f45' : '#748c94' }]}>
-                Profile
-              </Text>
-            </View>
-          ),
+          tabBarIcon: ({ focused }) =>
+            renderTabIcon(require('../../assets/icons/profile.png'), 'Profile', focused),
         }}
       />
     </Tabs>
@@ -125,17 +76,31 @@ const DashboardLayout = () => {
 const styles = StyleSheet.create({
   iconContainer: {
     alignItems: 'center',
+    justifyContent: 'flex-start',
+    height: 60,
+    marginTop: 0,
+  },
+  iconWrapper: {
+    borderRadius: 20,
+    padding: 6,
+    alignItems: 'center',
     justifyContent: 'center',
-    width: '100%', 
+    marginBottom: 4,
+  },
+  focusedCircle: {
+    backgroundColor: '#1053BC',
   },
   icon: {
     width: 25,
     height: 25,
-    marginBottom: 3,
   },
   label: {
-    fontSize: 11,
+    fontSize: 8,
+    color: '#748c94',
     textAlign: 'center',
+  },
+  focusedLabel: {
+    color: '#1053BC',
   },
 });
 
