@@ -15,12 +15,12 @@ const Home = () => {
       <Spacer />
 
       <ThemedText style={styles.title} title={true}>
-        Instagram Knockoff!!!
+        Reserved
       </ThemedText>
 
       <Spacer height={10}/>
       <ThemedText style = {{marginTop: 10, marginBottom: 13}}>
-        #1 school supply app trust
+        #1 school supply app coming trust
       </ThemedText>
       
       <Link href = "/login" style={styles.link}>

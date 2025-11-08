@@ -1,50 +1,107 @@
-import { View, Text, useColorScheme } from 'react-native'
-import React from 'react'
-import { Tabs } from 'expo-router'
-import { Colors } from '../../constants/Colors'
+import { StyleSheet, View, Text, Image, useColorScheme } from 'react-native';
+import React from 'react';
+import { Tabs } from 'expo-router';
+import { Colors } from '../../constants/Colors';
 
 const DashboardLayout = () => {
-  const colorScheme = useColorScheme()
-  const theme = Colors[colorScheme] ?? Colors.light
-  
+  const colorScheme = useColorScheme();
+  const theme = Colors[colorScheme] ?? Colors.light;
+
+  const renderTabIcon = (iconSource, label, focused) => (
+    <View style={styles.iconContainer}>
+      <View style={[styles.iconWrapper, focused && styles.focusedCircle]}>
+        <Image source={iconSource} resizeMode="contain" style={styles.icon} />
+      </View>
+      <Text
+        style={[styles.label, focused && styles.focusedLabel]}
+        numberOfLines={1}
+        ellipsizeMode="tail"
+      >
+        {label}
+      </Text>
+    </View>
+  );
+
   return (
-    <Tabs 
-      screenOptions={{headerShown: false, 
-          tabBarStyle: {
+    <Tabs
+      screenOptions={{
+        headerShown: false,
+        tabBarShowLabel: false,
+        tabBarStyle: {
           backgroundColor: theme.navBackground,
-          padding: 10,
-          height: 90,
+          height: 80,
+          paddingTop: 10,
         },
-        tabBarActiveTintColor: theme.iconColorFocused,
-        tabBarInactiveTintColor: theme.iconColor
       }}
-
-
     >
-      <Tabs.Screen 
-        name="home" 
-        options={{ title: 'Home'}}
+      <Tabs.Screen
+        name="home"
+        options={{
+          tabBarIcon: ({ focused }) =>
+            renderTabIcon(require('../../assets/icons/home.png'), 'Home', focused),
+        }}
       />
-      <Tabs.Screen 
-        name="map" 
-        options={{ title: 'Map'}}
+      <Tabs.Screen
+        name="map"
+        options={{
+          tabBarIcon: ({ focused }) =>
+            renderTabIcon(require('../../assets/icons/map.png'), 'Map', focused),
+        }}
       />
-      <Tabs.Screen 
-        name="donate" 
-        options={{ title: 'Donate'}}
+      <Tabs.Screen
+        name="donate"
+        options={{
+          tabBarIcon: ({ focused }) =>
+            renderTabIcon(require('../../assets/icons/donate.png'), 'Donate', focused),
+        }}
       />
-      <Tabs.Screen 
-        name="receive" 
-        options={{ title: 'Receive'}}
+      <Tabs.Screen
+        name="receive"
+        options={{
+          tabBarIcon: ({ focused }) =>
+            renderTabIcon(require('../../assets/icons/receive.png'), 'Receive', focused),
+        }}
       />
-      <Tabs.Screen 
-        name="profile" 
-        options={{ title: 'Profile'}}
+      <Tabs.Screen
+        name="profile"
+        options={{
+          tabBarIcon: ({ focused }) =>
+            renderTabIcon(require('../../assets/icons/profile.png'), 'Profile', focused),
+        }}
       />
+    </Tabs>
+  );
+};
 
+const styles = StyleSheet.create({
+  iconContainer: {
+    alignItems: 'center',
+    justifyContent: 'flex-start',
+    height: 60,
+    marginTop: 0,
+  },
+  iconWrapper: {
+    borderRadius: 20,
+    padding: 6,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 4,
+  },
+  focusedCircle: {
+    backgroundColor: '#1053BC',
+  },
+  icon: {
+    width: 25,
+    height: 25,
+  },
+  label: {
+    fontSize: 8,
+    color: '#748c94',
+    textAlign: 'center',
+  },
+  focusedLabel: {
+    color: '#1053BC',
+  },
+});
 
-      </Tabs>
-  )
-}
-
-export default DashboardLayout
+export default DashboardLayout;
