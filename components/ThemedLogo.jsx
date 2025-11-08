@@ -10,7 +10,11 @@ const ThemedLogo = () => {
   const logo = colorScheme === 'dark' ? DarkLogo : LightLogo
 
   return (
-    <Image source={logo} />
+    <Image 
+      source={logo} 
+      style={{width: 150, height: 150}} 
+      resizeMode="contain"
+    />
   )
 }
 

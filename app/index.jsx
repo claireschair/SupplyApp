@@ -12,7 +12,6 @@ const Home = () => {
     <ThemedView style={styles.container}>
 
       <ThemedLogo />
-      <Spacer />
 
       <ThemedText style={styles.title} title={true}>
         Reserved
