@@ -1,4 +1,4 @@
-import { StyleSheet, View, Image } from 'react-native'
+import { StyleSheet, View, Image, Dimensions } from 'react-native'
 import ThemedLogo from "../../components/ThemedLogo"
 import ThemedText from "../../components/ThemedText"
 import ThemedView from "../../components/ThemedView"
@@ -6,17 +6,17 @@ import Spacer from "../../components/Spacer"
 
 // Replace with your actual logo import
 import Logo from '../../assets/logo/logo_light.png'
+const { width, height } = Dimensions.get('window')
 
 const Profile = () => {
   return (
     <ThemedView style={styles.container}>
-
       <View style={styles.topBackground} />
 
       <View style={styles.header}>
-
         <View style={styles.curveOverlay} />
 
+        {/* Using your existing image setup */}
         <Image source={Logo} style={styles.logo} resizeMode="contain" />
         
         <Spacer height={15} />
@@ -27,7 +27,6 @@ const Profile = () => {
         <View style={styles.spacerSmall} />
       </View>
 
-      {/* Main content */}
       <View style={styles.content}>
         <ThemedText>You have # donations</ThemedText>
       </View>
@@ -43,40 +42,44 @@ const styles = StyleSheet.create({
     backgroundColor: '#f8f9fa',
   },
   topBackground: {
-    height: 50,
+    position: 'absolute',
+    top: 0,
+    width: '100%',
+    height: 250,
     backgroundColor: '#4A90E2',
+    zIndex: 0,
   },
   header: {
     width: '100%',
-    height: 180,
-    backgroundColor: '#4A90E2',
+    alignItems: 'center',
+    justifyContent: 'center',
     position: 'relative',
     overflow: 'hidden',
-    alignItems: 'center',
-    justifyContent: 'flex-end', 
-    paddingBottom: 20,
+    paddingTop: 30,
   },
   curveOverlay: {
     position: 'absolute',
-    bottom: -90,
-    width: '120%',
-    height: 180,
+    top: 160, 
+    left: -width * 0.15,
+    width: width * 1.3,
+    height: 475,
     backgroundColor: '#f8f9fa',
-    borderTopLeftRadius: 200,
-    borderTopRightRadius: 200,
-    alignSelf: 'center',
-    zIndex: 0,          
+    borderRadius: 350,
+    zIndex: 0,
   },
   logo: {
-    width: 100,
-    height: 100,
-    zIndex: 1,         
+    width: 150, 
+    height: 150,
+    zIndex: 1,
+    marginTop: 40,
   },
   heading: {
     fontWeight: 'bold',
-    fontSize: 20,
-    marginTop: -10,
+    fontSize: 20, // same as Home heading
+    marginTop: 30,
     zIndex: 1,
+    color: 'black',
+    textAlign: 'center',
   },
   spacerSmall: {
     height: 8,
