@@ -14,7 +14,7 @@ const Home = () => {
         <Spacer />
         <ThemedLogo />
         <ThemedText title style={styles.heading}>
-          Reserved
+          Reserve
         </ThemedText>
       <ThemedText style={styles.subheading}>
         Our Mission
