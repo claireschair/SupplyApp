@@ -75,8 +75,8 @@ const styles = StyleSheet.create({
   },
   heading: {
     fontWeight: 'bold',
-    fontSize: 20, // same as Home heading
-    marginTop: 30,
+    fontSize: 30, 
+    marginTop: 20,
     zIndex: 1,
     color: 'black',
     textAlign: 'center',

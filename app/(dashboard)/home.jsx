@@ -20,9 +20,17 @@ const Home = () => {
         Our Mission
       </ThemedText>
       <ThemedText style={styles.paragraph}>
-        We aim to create a simple and reliable blah blah blah and help one another through yes yes yes 
+        We aim to expand access to education by helping teachers and students get the school supplies they need. 
+        We do this through donations recycling from others, and connecting them with local resources. 
+        TBD
       </ThemedText>
       
+      <View style={styles.squareRow}>
+        <View style={styles.square} />
+        <View style={styles.square} />
+        <View style={styles.square} />
+      </View>
+
       </View>
 
 
@@ -82,7 +90,7 @@ const styles = StyleSheet.create({
     fontSize: 22,
     fontWeight: '600',
     color: '#4A90E2',
-    marginTop: 20,
+    marginTop: 30,
     textAlign: 'center',
   },
   paragraph: {
@@ -92,5 +100,19 @@ const styles = StyleSheet.create({
     paddingHorizontal: 40,
     marginTop: 6,
     lineHeight: 22,
+  },
+  squareRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-around', 
+    marginTop: 40,
+    width: '90%', 
+    alignSelf: 'center', 
+  },
+
+  square: {
+    width: 90,        
+    height: 90,
+    backgroundColor: '#4A90E2',
+    borderRadius: 15, 
   },
 })
