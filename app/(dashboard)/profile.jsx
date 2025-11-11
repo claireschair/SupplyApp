@@ -1,4 +1,4 @@
-import { StyleSheet, View, Image, Dimensions } from 'react-native'
+import { StyleSheet, View, Image, Dimensions, Text } from 'react-native'
 import ThemedLogo from "../../components/ThemedLogo"
 import ThemedText from "../../components/ThemedText"
 import ThemedView from "../../components/ThemedView"
@@ -6,9 +6,12 @@ import Spacer from "../../components/Spacer"
 
 // Replace with your actual logo import
 import Logo from '../../assets/logo/logo_light.png'
+import { useUser } from '../../hooks/useUser'
+import ThemedButton from '../../components/ThemedButton'
 const { width, height } = Dimensions.get('window')
 
 const Profile = () => {
+  const {logout} = useUser
   return (
     <ThemedView style={styles.container}>
       <View style={styles.topBackground} />
@@ -30,6 +33,9 @@ const Profile = () => {
       <View style={styles.content}>
         <ThemedText>You have # donations</ThemedText>
       </View>
+      <ThemedButton onPress={logout} style={styles.button}>
+        <Text style={{ color: '#f2f2f2' }}>Logout</Text>
+      </ThemedButton>
     </ThemedView>
   )
 }
