@@ -1,4 +1,4 @@
-import { View, Image, StyleSheet, Dimensions } from 'react-native'
+import { View, Image, StyleSheet, Dimensions, ScrollView } from 'react-native'
 import Spacer from "../../components/Spacer"
 import ThemedText from "../../components/ThemedText"
 import ThemedView from "../../components/ThemedView"
@@ -8,11 +8,14 @@ const {width, height } = Dimensions.get('window')
 const Home = () => {
   return (
     <ThemedView style={styles.container}>
+      <ScrollView>
       <View style ={styles.topBackground} />
       <View style={styles.circleBackground} />
       <View style={styles.header}>
+        
         <Spacer />
         <ThemedLogo />
+      
         <ThemedText title style={styles.heading}>
           Reserve
         </ThemedText>
@@ -34,11 +37,12 @@ const Home = () => {
       </View>
 
 
-
+      <Spacer />
       <View style={styles.content}>
         <ThemedText>Welcome!</ThemedText>
       </View>
 
+    </ScrollView>
     </ThemedView>
   )
 }
@@ -95,7 +99,6 @@ const styles = StyleSheet.create({
   },
   paragraph: {
     fontSize: 16,
-    color: '#333',
     textAlign: 'center',
     paddingHorizontal: 40,
     marginTop: 6,
