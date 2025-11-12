@@ -11,7 +11,8 @@ import ThemedButton from '../../components/ThemedButton'
 const { width, height } = Dimensions.get('window')
 
 const Profile = () => {
-  const {logout} = useUser
+  const {logout, user, authChecked} = useUser()
+
   return (
     <ThemedView style={styles.container}>
       <View style={styles.topBackground} />
@@ -24,7 +25,7 @@ const Profile = () => {
         
         <Spacer height={15} />
         <ThemedText title style={styles.heading}>
-          Your Account
+          {user.email}
         </ThemedText>
 
         <View style={styles.spacerSmall} />
