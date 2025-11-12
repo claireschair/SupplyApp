@@ -13,6 +13,28 @@ const { width, height } = Dimensions.get('window')
 const Profile = () => {
   const {logout, user, authChecked} = useUser()
 
+  // 1️⃣ While checking authentication
+  if (!authChecked) {
+    return (
+      <ThemedView style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#4A90E2" />
+        <Spacer height={10} />
+        <ThemedText title>Loading profile...</ThemedText>
+      </ThemedView>
+    )
+  }
+
+  // 2️⃣ When user is not logged in
+  if (!user) {
+    return (
+      <ThemedView style={styles.loadingContainer}>
+        <ThemedText title>No user logged in</ThemedText>
+        <Spacer height={10} />
+        <ThemedText>Try logging in again.</ThemedText>
+      </ThemedView>
+    )
+  }
+
   return (
     <ThemedView style={styles.container}>
       <View style={styles.topBackground} />
@@ -25,7 +47,7 @@ const Profile = () => {
         
         <Spacer height={15} />
         <ThemedText title style={styles.heading}>
-          {user.email}
+          {user.name}
         </ThemedText>
 
         <View style={styles.spacerSmall} />

@@ -14,6 +14,7 @@ import { useUser } from '../../hooks/useUser'
 const Register = () => {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
+  const [name, setName] = useState("")
   const [error, setError] = useState()
 
 
@@ -22,7 +23,7 @@ const Register = () => {
   const handleSubmit = async () => {
     setError(null)
     try {
-      await register(email, password)
+      await register(email, password, name)
     } catch(error) {
       setError(error.message)
       
@@ -39,6 +40,14 @@ const Register = () => {
         </ThemedText>
 
         <Spacer />
+
+        <ThemedTextInput
+          style={{ marginBottom: 20, width: "80%" }}
+          placeholder="Name"
+          value={name}
+          onChangeText={setName}
+        />
+
         <ThemedTextInput
           style={{ marginBottom: 20, width: "80%" }}
           placeholder="Email"
@@ -54,6 +63,7 @@ const Register = () => {
           onChangeText={setPassword}
           secureTextEntry
         />
+
 
         <ThemedButton onPress={handleSubmit}>
           <Text style={{ color: '#f2f2f2' }}>Register</Text>

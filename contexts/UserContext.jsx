@@ -19,9 +19,9 @@ export function UserProvider({ children }) {
     }
   }
 
-  async function register(email, password) {
+  async function register(email, password, name) {
     try {
-      await account.create(ID.unique(), email, password)
+      await account.create(ID.unique(), email, password, name)
       await login(email, password)
     } catch (error) {
       throw Error(error.message)
