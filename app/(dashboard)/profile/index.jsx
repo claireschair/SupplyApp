@@ -13,7 +13,6 @@ const Profile = () => {
   const router = useRouter(); 
   const {logout, user, authChecked} = useUser()
 
-  // 1️⃣ While checking authentication
   if (!authChecked) {
     return (
       <ThemedView style={styles.loadingContainer}>
@@ -24,7 +23,6 @@ const Profile = () => {
     )
   }
 
-  // 2️⃣ When user is not logged in
   if (!user) {
     return (
       <ThemedView style={styles.loadingContainer}>
@@ -49,15 +47,15 @@ const Profile = () => {
       </View>
 
       <ThemedButton style={styles.button} onPress={() => router.push('/(dashboard)/profile/requests')}>
-        <Text>Requests</Text>
+        <Text style={{ color: '#f2f2f2' }}>Requests</Text>
       </ThemedButton>
 
       <ThemedButton style={styles.button} onPress={() => router.push('/(dashboard)/profile/donations')}>
-        <Text>Donations</Text>
+        <Text style={{ color: '#f2f2f2' }}>Donations</Text>
       </ThemedButton>
 
       <ThemedButton style={styles.button} onPress={() => router.push('/(dashboard)/profile/wishlist')}>
-        <Text>Wishlist</Text>
+        <Text style={{ color: '#f2f2f2' }}>Wishlist</Text>
       </ThemedButton>
 
 
