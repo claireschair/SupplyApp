@@ -1,26 +1,28 @@
-import { createContext, useState } from "react"
-import {account} from "../lib/appwrite"
-import {ID} from 'react-native-appwrite'
+import { createContext, useEffect, useState } from "react"
+import { account } from "../lib/appwrite"
+import { ID } from "react-native-appwrite"
 
 export const UserContext = createContext()
 
 export function UserProvider({ children }) {
   const [user, setUser] = useState(null)
+  const [authChecked, setAuthChecked] = useState(false)
 
   async function login(email, password) {
     try {
-        await account.createEmailPasswordSession(email, password)
-        const response = await account.get()
-        setUser(response)
+      await account.createEmailPasswordSession(email, password)
+      const response = await account.get()
+      setUser(response)
+
     } catch (error) {
       throw Error(error.message)
     }
   }
 
-  async function register(email, password) {
+  async function register(email, password, name) {
     try {
-        await account.create(ID.unique(), email, password)
-        await login(email, password)
+      await account.create(ID.unique(), email, password, name)
+      await login(email, password)
     } catch (error) {
       throw Error(error.message)
     }
@@ -31,9 +33,25 @@ export function UserProvider({ children }) {
     setUser(null)
   }
 
+  async function getInitialUserValue() {
+    console.log("authChecked:", authChecked, "user:", user)
+    try {
+      const res = await account.get()
+      setUser(res)
+    } catch (error) {
+      setUser(null)
+    } finally {
+      setAuthChecked(true)
+    }
+  }
+
+  useEffect(() => {
+    getInitialUserValue()
+  }, [])
+
   return (
     <UserContext.Provider value={{ 
-      user, login, logout, register,
+      user, login, logout, register, authChecked
     }}>
       {children}
     </UserContext.Provider>
