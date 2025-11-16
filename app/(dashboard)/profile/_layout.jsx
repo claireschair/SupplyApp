@@ -7,6 +7,7 @@ export default function ProfileLayout() {
       <Stack.Screen name="donations" />
       <Stack.Screen name="requests" />
       <Stack.Screen name="wishlist" />
+      <Stack.Screen name="settings" />
     </Stack>
   );
 }

@@ -1,15 +1,15 @@
 import { StyleSheet } from 'react-native'
 
-import Spacer from "../../components/Spacer"
-import ThemedText from "../../components/ThemedText"
-import ThemedView from "../../components/ThemedView"
+import Spacer from "../../../components/Spacer"
+import ThemedText from "../../../components/ThemedText"
+import ThemedView from "../../../components/ThemedView"
 
-const Receive = () => {
+const Wishlist = () => {
   return (
     <ThemedView style={styles.container}>
 
       <ThemedText title={true} style={styles.heading}>
-        Receive School Supplies
+        Add to your Wishlist
       </ThemedText>
       <Spacer />
 
@@ -17,7 +17,7 @@ const Receive = () => {
   )
 }
 
-export default Receive
+export default Wishlist
 
 const styles = StyleSheet.create({
   container: {
