@@ -2,6 +2,7 @@ import { StyleSheet, View, Text, Image, useColorScheme } from 'react-native';
 import React from 'react';
 import { Tabs } from 'expo-router';
 import { Colors } from '../../constants/Colors';
+import UserOnly from '../../components/auth/UserOnly';
 
 const DashboardLayout = () => {
   const colorScheme = useColorScheme();
@@ -23,6 +24,7 @@ const DashboardLayout = () => {
   );
 
   return (
+    <UserOnly>
     <Tabs
       screenOptions={{
         headerShown: false,
@@ -70,6 +72,7 @@ const DashboardLayout = () => {
         }}
       />
     </Tabs>
+    </UserOnly>
   );
 };
 
