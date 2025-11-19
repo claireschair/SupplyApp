@@ -1,11 +1,10 @@
-import { StyleSheet, View, Image, Text, TouchableOpacity, Dimensions } from 'react-native';
+import { StyleSheet, View, Image, TouchableOpacity, Dimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
 import { useRouter } from 'expo-router'; 
 
 import ThemedText from "../../../components/ThemedText";
 import ThemedView from "../../../components/ThemedView";
-import ThemedButton from "../../../components/ThemedButton";
 import Spacer from "../../../components/Spacer";
 
 import ReceiveIcon from "../../../assets/icons/receive.png";
@@ -29,39 +28,43 @@ const Receive = () => {
         </ThemedText>
         <Spacer height={30} />
 
-
         <View style={styles.buttonRow}>
-          <View style={styles.buttonColumn}>
-            <TouchableOpacity 
-              style={styles.squareButton}
-              onPress={() => router.push('/(dashboard)/receive/form')}
-            >
-              <Ionicons name="document-text-outline" size={60} color="#f2f2f2" />
-            </TouchableOpacity>
-            <ThemedText style={styles.buttonLabel}>Need Form</ThemedText>
-          </View>
+          <TouchableOpacity 
+            style={styles.squareButton}
+            onPress={() => router.push('/(dashboard)/receive/form')}
+          >
+            <Ionicons name="document-text-outline" size={60} color="#f2f2f2" />
+          </TouchableOpacity>
 
-          <View style={styles.buttonColumn}>
-            <TouchableOpacity 
-              style={styles.squareButton}
-              onPress={() => router.push('/(dashboard)/map')}
-            >
-              <Ionicons name="location-outline" size={60} color="#f2f2f2" />
-            </TouchableOpacity>
-            <ThemedText style={styles.buttonLabel}>Supplies Near Me</ThemedText>
-          </View>
+          <TouchableOpacity 
+            style={styles.squareButton}
+            onPress={() => router.push('/(dashboard)/map')}
+          >
+            <Ionicons name="location-outline" size={60} color="#f2f2f2" />
+          </TouchableOpacity>
         </View>
+
+        <View style={styles.textRow}>
+          <ThemedText style={styles.buttonLabel}>Need Form</ThemedText>
+          <ThemedText style={styles.buttonLabel}>Supplies Near Me</ThemedText>
+        </View>
+
+        <Spacer height={40} />
+
+        <View style={styles.centerButtonWrapper}>
+          <TouchableOpacity 
+            style={styles.squareButton}
+            onPress={() => router.push('/(dashboard)/receive/wishlist')}
+          >
+            <Ionicons name="heart-circle-outline" size={60} color="#f2f2f2" />
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.singleTextRow}>
+          <ThemedText style={styles.buttonLabel}>Add to Your Wishlist</ThemedText>
+        </View>
+
       </View>
-
-      <Spacer height={40} />
-
-      <ThemedButton 
-        style={styles.button} 
-        onPress={() => router.push('/(dashboard)/receive/wishlist')}
-      >
-        <Text style={{ color: '#f2f2f2' }}>Add to Your Wishlist</Text>
-      </ThemedButton>
-      <Spacer height={10} />
     </ThemedView>
   );
 };
@@ -116,25 +119,31 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
 
-  button: {
-    width: "75%",
-    height: 60,
-    alignItems: 'center',
-    justifyContent: 'center',
-    alignSelf: 'center',
-    marginVertical: 6,
-  },
 
   buttonRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    width: '75%',
-    alignSelf: 'center',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 35,
   },
 
-  buttonColumn: {
-    alignItems: 'center',
+  textRow: {
+    flexDirection: 'row',
     justifyContent: 'center',
+    alignItems: 'center',
+    gap: 35,
+    marginTop: 8,
+  },
+
+  centerButtonWrapper: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+
+  singleTextRow: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 8,
   },
 
   squareButton: {
@@ -147,7 +156,7 @@ const styles = StyleSheet.create({
   },
 
   buttonLabel: {
-    marginTop: 8,
     textAlign: 'center',
+    width: 130,
   },
 });
