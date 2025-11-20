@@ -1,5 +1,7 @@
 import { StyleSheet, View, Image, Dimensions, Text, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { database } from '../../../lib/appwrite';
+
 
 import { useRouter } from 'expo-router'; 
 import { useUser } from '../../../hooks/useUser';
@@ -15,6 +17,10 @@ const { width } = Dimensions.get('window');
 const Profile = () => {
   const router = useRouter(); 
   const { logout, user, authChecked } = useUser();
+  async function fetchUserLabel(userId) {
+    const doc = await database.getDocument("users", userId);
+    return doc.label;
+  }
 
   if (!authChecked) {
     return (
@@ -48,6 +54,12 @@ const Profile = () => {
         <Spacer height={5} />
         <ThemedText title style={styles.heading}>
           {user.name}
+        </ThemedText>
+        <Spacer height={20} />
+
+        <Spacer height={5} />
+        <ThemedText title style={styles.heading}>
+          {user.label}
         </ThemedText>
         <Spacer height={20} />
       </View>
