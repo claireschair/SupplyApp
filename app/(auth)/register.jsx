@@ -16,6 +16,7 @@ const Register = () => {
   const [password, setPassword] = useState("")
   const [name, setName] = useState("")
   const [error, setError] = useState()
+  const [label, setLabel] = useState()
 
 
   const {register} = useUser()
@@ -23,7 +24,7 @@ const Register = () => {
   const handleSubmit = async () => {
     setError(null)
     try {
-      await register(email, password, name)
+      await register(email, password, name, label)
     } catch(error) {
       setError(error.message)
       
@@ -46,6 +47,12 @@ const Register = () => {
           placeholder="Name"
           value={name}
           onChangeText={setName}
+        />
+        <ThemedTextInput
+          style={{ marginBottom: 20, width: "80%" }}
+          placeholder="Teacher/Student/Other"
+          value={label}
+          onChangeText={setLabel}
         />
 
         <ThemedTextInput
