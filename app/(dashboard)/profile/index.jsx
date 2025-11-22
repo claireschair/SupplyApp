@@ -49,19 +49,19 @@ const Profile = () => {
         <ThemedText title style={styles.heading}>
           {user.name}
         </ThemedText>
-        <Spacer height={20} />
+        <Spacer height={30} />
       </View>
 
       
       <ThemedButton style={styles.button} onPress={() => router.push('/(dashboard)/profile/requests')}>
         <Text style={{ color: '#f2f2f2' }}>Requests</Text>
       </ThemedButton>
-      <Spacer height={10} />
+      <Spacer height={20} />
 
       <ThemedButton style={styles.button} onPress={() => router.push('/(dashboard)/profile/donations')}>
         <Text style={{ color: '#f2f2f2' }}>Donations</Text>
       </ThemedButton>
-      <Spacer height={10} />
+      <Spacer height={20} />
 
       <ThemedButton style={styles.button} onPress={() => router.push('/(dashboard)/profile/wishlist')}>
         <Text style={{ color: '#f2f2f2' }}>Wishlist</Text>
@@ -75,19 +75,14 @@ const Profile = () => {
         <Ionicons name="settings-outline" size={30} color="#f2f2f2" />
       </TouchableOpacity>
 
-      <TouchableOpacity 
-        style={styles.feedbackButton}
-        onPress={() => router.push('/(dashboard)/profile/feedback')}
-      >
-        <Ionicons name="chatbubble-ellipses-outline" size={30} color="#f2f2f2" />
-      </TouchableOpacity>
-
+      {/* (Currently hiding logout button on profile page)
       <TouchableOpacity 
         style={styles.logoutButton}
         onPress={logout}
       >
         <Ionicons name="log-out-outline" size={30} color="#f2f2f2" />
       </TouchableOpacity>
+      */}
 
 
     </ThemedView>
@@ -167,22 +162,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
 
-  feedbackButton: {
-    position: 'absolute',
-    bottom: 35,
-    left: 105,
-    width: 55,
-    height: 55,
-    borderRadius: 12,
-    backgroundColor: '#415ba8ff',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-
   logoutButton: {
     position: 'absolute',
     bottom: 35,
-    left: 175,
+    left: 105,
     width: 55,
     height: 55,
     borderRadius: 12,
