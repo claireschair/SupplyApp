@@ -4,6 +4,9 @@ import { ID, Query } from "react-native-appwrite";
 
 export const UserContext = createContext();
 
+const FEEDBACK_DB_ID = "6921e0910003970bf9bb";
+const FEEDBACK_COLLECTION_ID = "feedbackattributers"; // or your ID
+
 export function UserProvider({ children }) {
   const [user, setUser] = useState(null);
   const [authChecked, setAuthChecked] = useState(false);
@@ -89,6 +92,23 @@ export function UserProvider({ children }) {
       setAuthChecked(true);
     }
   }
+  async function saveFeedback(rating, text) {
+    if (!user) throw new Error("User not logged in");
+
+    const feedbackData = {
+      userId: user.$id,
+      rating,
+      text,
+    };
+
+    return await database.createDocument(
+      FEEDBACK_DB_ID,
+      FEEDBACK_COLLECTION_ID,
+      ID.unique(),
+      feedbackData
+    );
+  }
+
 
   // Load on app start
   useEffect(() => {
@@ -97,7 +117,7 @@ export function UserProvider({ children }) {
 
   return (
     <UserContext.Provider
-      value={{ user, login, logout, register, authChecked }}
+      value={{ user, login, logout, register, authChecked, saveFeedback }}
     >
       {children}
     </UserContext.Provider>
