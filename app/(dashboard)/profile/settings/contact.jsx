@@ -1,15 +1,15 @@
 import { StyleSheet } from 'react-native'
 
-import Spacer from "../../../components/Spacer"
-import ThemedText from "../../../components/ThemedText"
-import ThemedView from "../../../components/ThemedView"
+import Spacer from "../../../../components/Spacer"
+import ThemedText from "../../../../components/ThemedText"
+import ThemedView from "../../../../components/ThemedView"
 
-const Feedback = () => {
+const Contact = () => {
   return (
     <ThemedView style={styles.container}>
 
       <ThemedText title={true} style={styles.heading}>
-        Feedback Form
+        Contact Information
       </ThemedText>
       <Spacer />
 
@@ -17,7 +17,7 @@ const Feedback = () => {
   )
 }
 
-export default Feedback
+export default Contact
 
 const styles = StyleSheet.create({
   container: {

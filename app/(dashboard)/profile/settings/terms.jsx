@@ -1,15 +1,15 @@
 import { StyleSheet } from 'react-native'
 
-import Spacer from "../../../components/Spacer"
-import ThemedText from "../../../components/ThemedText"
-import ThemedView from "../../../components/ThemedView"
+import Spacer from "../../../../components/Spacer"
+import ThemedText from "../../../../components/ThemedText"
+import ThemedView from "../../../../components/ThemedView"
 
-const Settings = () => {
+const Terms = () => {
   return (
     <ThemedView style={styles.container}>
 
       <ThemedText title={true} style={styles.heading}>
-        Settings
+        Terms and Conditions
       </ThemedText>
       <Spacer />
 
@@ -17,7 +17,7 @@ const Settings = () => {
   )
 }
 
-export default Settings
+export default Terms
 
 const styles = StyleSheet.create({
   container: {
