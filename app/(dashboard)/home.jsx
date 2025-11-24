@@ -8,7 +8,10 @@ const {width, height } = Dimensions.get('window')
 const Home = () => {
   return (
     <ThemedView style={styles.container}>
-      <ScrollView>
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+      >
       <View style ={styles.topBackground} />
       <View style={styles.circleBackground} />
       <View style={styles.header}>
@@ -116,5 +119,13 @@ const styles = StyleSheet.create({
     height: 90,
     backgroundColor: '#4A90E2',
     borderRadius: 15, 
+  },
+  scrollView:{
+    flex:1,
+    backgroundColor: "#4A90E2",
+  },
+  scrollContent: {
+    flexGrow: 1,
+    backgroundColor: '#f8f9fa',
   },
 })
