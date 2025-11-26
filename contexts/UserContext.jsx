@@ -92,22 +92,37 @@ export function UserProvider({ children }) {
       setAuthChecked(true);
     }
   }
-  async function saveFeedback(rating, text) {
-    if (!user) throw new Error("User not logged in");
+async function saveDonation(zipcode, items) {
+  if (!user) throw new Error("User not logged in");
 
-    const feedbackData = {
-      userId: user.$id,
-      rating,
-      text,
-    };
+  const donationData = {
+    userId: user.$id,
+    zipcode,
+    items: JSON.stringify(items), // Store multiple items safely
+  };
 
-    return await database.createDocument(
-      FEEDBACK_DB_ID,
-      FEEDBACK_COLLECTION_ID,
-      ID.unique(),
-      feedbackData
-    );
-  }
+  return await database.createDocument(
+    "69276d130021687546df",          // Add this constant
+    "donations",  // Add this constant
+    ID.unique(),
+    donationData
+  );
+}
+async function saveFeedback(rating, text) { 
+  if (!user) throw new Error("User not logged in"); 
+  const feedbackData = { 
+    userId: user.$id, 
+    rating, 
+    text, 
+  }; 
+  return await database.createDocument( 
+    FEEDBACK_DB_ID, 
+    FEEDBACK_COLLECTION_ID, 
+    ID.unique(), 
+    feedbackData 
+  ); 
+}
+
 
 
   // Load on app start
@@ -117,7 +132,7 @@ export function UserProvider({ children }) {
 
   return (
     <UserContext.Provider
-      value={{ user, login, logout, register, authChecked, saveFeedback }}
+      value={{ user, login, logout, register, authChecked, saveFeedback, saveDonation }}
     >
       {children}
     </UserContext.Provider>
