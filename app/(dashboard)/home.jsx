@@ -26,17 +26,60 @@ const Home = () => {
         Our Mission
       </ThemedText>
       <ThemedText style={styles.paragraph}>
-        We aim to expand access to education by helping teachers and students get the school supplies they need. 
-        We do this through donations recycling from others, and connecting them with local resources. 
-        TBD
+        Reserve aims to expand access to education by helping school supplies reach the students and teachers who need them most.
+        We do this by re-serving gently used and donated materials, connecting communities to local resources, 
+        and support classrooms through shared wishlists and direct giving. Our mission is simple: reduce waste, increase 
+        opportunitiy, and make learning possible for everyone. 
       </ThemedText>
-      
+
+
       <View style={styles.squareRow}>
-        <View style={styles.square} />
-        <View style={styles.square} />
-        <View style={styles.square} />
+        <View style={styles.square}>
+          <ThemedText style={styles.statText}>70%</ThemedText>
+          <ThemedText style={styles.descriptionText}>global learning poverty rate</ThemedText>
+        </View>
+        <View style={styles.square}>
+          <ThemedText style={styles.statText}>0</ThemedText>
+          <ThemedText style={styles.descriptionText}>school supplies distributed</ThemedText>
+        </View>
+        <View style={styles.square}>
+          <ThemedText style={styles.statText}>68.8</ThemedText>
+          <ThemedText style={styles.descriptionText}>million teachers shortage</ThemedText>
+        </View>
       </View>
 
+      <Spacer />
+
+      <ThemedText style={styles.subheading}>
+        How Reserve Works
+      </ThemedText>
+      <View style = {styles.stepItem}>
+        <Image source={require('../../assets/icons/donate.png')} style={styles.stepIcon}/>
+        <View style = {styles.stepTextContainer}>
+          <ThemedText style = {styles.stepTitle}>Give</ThemedText>
+          <ThemedText style={styles.stepDescription}>
+            Donate used or new supplies to verified drop off locations.
+          </ThemedText>
+        </View>
+      </View>
+      <View style = {styles.stepItem}>
+        <Image source={require('../../assets/icons/connect.png')} style={styles.stepIcon}/>
+        <View style = {styles.stepTextContainer}>
+          <ThemedText style = {styles.stepTitle}>Connect</ThemedText>
+          <ThemedText style={styles.stepDescription}>
+            Browse wishlists, start a donation drive, or discover local classrooms in need.
+          </ThemedText>
+        </View>
+      </View>
+      <View style = {styles.stepItem}>
+        <Image source={require('../../assets/icons/receive.png')} style={styles.stepIcon}/>
+        <View style = {styles.stepTextContainer}>
+          <ThemedText style = {styles.stepTitle}>Recieve</ThemedText>
+          <ThemedText style={styles.stepDescription}>
+            Request supplies or get connected with nearby resources.
+          </ThemedText>
+        </View>
+      </View>
       </View>
 
 
@@ -60,7 +103,7 @@ const styles = StyleSheet.create({
     position: "absolute",
     top: 0,
     width: "100%",
-    height: "50%", // top half is blue
+    height: "30%", //top half is blue
     backgroundColor: "#4A90E2",
     zIndex: 0,
   },
@@ -113,13 +156,6 @@ const styles = StyleSheet.create({
     width: '90%', 
     alignSelf: 'center', 
   },
-
-  square: {
-    width: 90,        
-    height: 90,
-    backgroundColor: '#4A90E2',
-    borderRadius: 15, 
-  },
   scrollView:{
     flex:1,
     backgroundColor: "#4A90E2",
@@ -127,5 +163,66 @@ const styles = StyleSheet.create({
   scrollContent: {
     flexGrow: 1,
     backgroundColor: '#f8f9fa',
+  },
+  square: {
+    width: 90,
+    height: 90,
+    backgroundColor: "#4A90E2",
+    borderRadius: 15,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 5,
+  },
+  statText: {
+    fontSize: 29,
+    fontWeight: "bold",
+    color: "white",
+    textAlign: "center",
+    marginBottom: 2,  
+  },
+  descriptionText: {
+    fontSize: 8.5,
+    color: "white",
+    textAlign: "center",
+    lineHeight: 10,
+  },
+  stepsContainer:{
+    width: '85%',
+    marginTop: 20,
+  },
+  stepItem: {
+    flexDirection: 'row',
+    alignSelf: 'flex-start',
+    marginTop: 20,
+    marginBottom: 28,
+    paddingHorizontal: 30,
+  },
+  stepIcon: {
+    width: 50,
+    height: 50,
+    resizeMode: 'contain',
+    marginBottom: 10,
+  },
+  stepTextContainer:{
+    flex:1,
+    flexDirection: 'column',
+    //marginLeft: 14,
+    //paddingRight: 20,
+  },
+  stepTitle: {
+    fontSize: 30,
+    fontWeight: '600',
+    color: 'black',
+    marginTop: 2,
+    marginLeft: 14,
+  },
+  stepDescription: {
+    fontSize: 14,
+    color: 'black',
+    textAlign: 'left',
+    paddingHorizontal: 5,
+    lineHeight: 16,
+    marginTop: 5,
+    marginLeft: 10,
   },
 })
