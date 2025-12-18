@@ -1,14 +1,15 @@
-import { StyleSheet, TextInput, TouchableOpacity, Keyboard } from "react-native";
+import { StyleSheet, TouchableOpacity, Keyboard } from "react-native";
 import React, { useState } from "react";
 
 import Spacer from "../../../components/Spacer";
 import ThemedText from "../../../components/ThemedText";
 import ThemedView from "../../../components/ThemedView";
 import { useUser } from "../../../hooks/useUser";
+import ThemedTextInput from "../../../components/ThemedTextInput";
 
 const DonationForm = () => {
-  const [zipcode, setZipcode] = useState("");
   const [selectedItems, setSelectedItems] = useState([]);
+  const [other, setOther] = useState("");
   const [error, setError] = useState(null);
 
   const { saveDonation } = useUser();
@@ -33,54 +34,36 @@ const DonationForm = () => {
   };
 
   const handleSubmit = async () => {
-    Keyboard.dismiss();  // 👈 HIDE KEYBOARD
-
+    Keyboard.dismiss();
     setError(null);
 
-    if (zipcode.length !== 5) {
-      setError("Please enter a valid 5-digit ZIP code.");
-      return;
-    }
+    const trimmedOther = other.trim();
+    const otherValue = trimmedOther.length > 0 ? trimmedOther : null;
 
-    if (selectedItems.length === 0) {
-      setError("Please select at least one supply item.");
+    if (selectedItems.length === 0 && !otherValue) {
+      setError("Please select or enter at least one supply item.");
       return;
     }
 
     try {
-      await saveDonation(zipcode, selectedItems);
-      setZipcode("");
+      await saveDonation(selectedItems, otherValue);
       setSelectedItems([]);
+      setOther("");
       alert("Thank you for your donation!");
     } catch (err) {
-      setError(err.message);
+      setError(err.message || "Something went wrong.");
     }
   };
 
+
   return (
     <ThemedView style={styles.container}>
-      <ThemedText title={true} style={styles.heading}>
+      <ThemedText title style={styles.heading}>
         Donation Form
       </ThemedText>
 
       <Spacer height={20} />
 
-      {/* ZIP CODE INPUT */}
-      <ThemedText>ZIP Code:</ThemedText>
-      <TextInput
-        style={styles.input}
-        placeholder="Enter ZIP code"
-        keyboardType="numeric"
-        value={zipcode}
-        onChangeText={setZipcode}
-        maxLength={5}
-        returnKeyType="done"
-        onSubmitEditing={handleSubmit}  // 👈 SUBMIT WHEN USER PRESSES "Done"
-      />
-
-      <Spacer height={20} />
-
-      {/* MULTI SELECT ITEMS */}
       <ThemedText>Select Supplies to Donate:</ThemedText>
       <Spacer height={10} />
 
@@ -107,24 +90,33 @@ const DonationForm = () => {
 
       <Spacer height={15} />
 
-      {/* ERROR */}
+      {/* OPTIONAL OTHER INPUT */}
+      <ThemedTextInput
+        style={{ marginBottom: 20, width: "90%" }}
+        placeholder="Other (optional, comma-separated if needed)"
+        value={other}
+        onChangeText={setOther}
+      />
+
       {error && <ThemedText style={styles.error}>{error}</ThemedText>}
 
       <Spacer height={15} />
 
-      {/* SUBMIT BUTTON */}
+      {/* SUBMIT */}
       <TouchableOpacity style={styles.button} onPress={handleSubmit}>
         <ThemedText style={styles.buttonText}>Submit Donation</ThemedText>
       </TouchableOpacity>
 
       <Spacer height={10} />
 
-      {/* HIDE KEYBOARD BUTTON */}
+      {/* HIDE KEYBOARD */}
       <TouchableOpacity
         style={styles.hideKeyboardButton}
-        onPress={() => Keyboard.dismiss()}
+        onPress={Keyboard.dismiss}
       >
-        <ThemedText style={styles.hideKeyboardText}>Hide Keyboard ⌄</ThemedText>
+        <ThemedText style={styles.hideKeyboardText}>
+          Hide Keyboard ⌄
+        </ThemedText>
       </TouchableOpacity>
     </ThemedView>
   );
@@ -142,15 +134,6 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     fontSize: 22,
     textAlign: "center",
-  },
-  input: {
-    width: "90%",
-    borderWidth: 1,
-    borderColor: "#ccc",
-    backgroundColor: "white",
-    borderRadius: 10,
-    padding: 10,
-    marginTop: 5,
   },
   itemButton: {
     width: "90%",
@@ -176,6 +159,7 @@ const styles = StyleSheet.create({
   error: {
     color: "red",
     fontSize: 14,
+    marginBottom: 10,
   },
   button: {
     backgroundColor: "#007AFF",
@@ -188,7 +172,6 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     fontSize: 16,
   },
-
   hideKeyboardButton: {
     marginTop: 10,
     padding: 8,

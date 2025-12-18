@@ -92,22 +92,21 @@ export function UserProvider({ children }) {
       setAuthChecked(true);
     }
   }
-async function saveDonation(zipcode, items) {
+async function saveDonation(items, other = null) {
   if (!user) throw new Error("User not logged in");
 
-  const donationData = {
-    userId: user.$id,
-    zipcode,
-    items: JSON.stringify(items), // Store multiple items safely
-  };
-
   return await database.createDocument(
-    "69276d130021687546df",          // Add this constant
-    "donations",  // Add this constant
+    "69276d130021687546df",
+    "donations",
     ID.unique(),
-    donationData
+    {
+      userId: user.$id,
+      items: items.join(", "),                 // array
+      Other: other || null,   // null if empty
+    }
   );
 }
+
 async function saveFeedback(rating, text) { 
   if (!user) throw new Error("User not logged in"); 
   const feedbackData = { 
