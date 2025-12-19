@@ -107,6 +107,21 @@ async function saveDonation(items, other = null) {
   );
 }
 
+async function saveRequest(items, other = null) {
+  if (!user) throw new Error("User not logged in");
+
+  return await database.createDocument(
+    "6944caa80022e2cfa289",
+    "requests",
+    ID.unique(),
+    {
+      userId: user.$id,
+      items: items.join(", "),                 // array
+      Other: other || null,   // null if empty
+    }
+  );
+}
+
 async function saveFeedback(rating, text) { 
   if (!user) throw new Error("User not logged in"); 
   const feedbackData = { 
@@ -131,7 +146,7 @@ async function saveFeedback(rating, text) {
 
   return (
     <UserContext.Provider
-      value={{ user, login, logout, register, authChecked, saveFeedback, saveDonation }}
+      value={{ user, login, logout, register, authChecked, saveFeedback, saveDonation, saveRequest }}
     >
       {children}
     </UserContext.Provider>
