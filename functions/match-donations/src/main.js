@@ -3,7 +3,6 @@ import { Client, Databases, ID, Query } from "node-appwrite";
 export default async function (context) {
   context.log("Function started");
 
-  // ✅ ENV VARS
   const {
     APPWRITE_ENDPOINT,
     APPWRITE_PROJECT_ID,
@@ -16,7 +15,7 @@ export default async function (context) {
     MATCH_COLLECTION_ID,
   } = process.env;
 
-  // ✅ Safety check
+  // Check for missing environment variables
   const missing = Object.entries({
     APPWRITE_ENDPOINT,
     APPWRITE_PROJECT_ID,
@@ -36,7 +35,7 @@ export default async function (context) {
     return context.res.empty();
   }
 
-  // ✅ Appwrite client
+  // Initialize Appwrite client
   const client = new Client()
     .setEndpoint(APPWRITE_ENDPOINT)
     .setProject(APPWRITE_PROJECT_ID)
@@ -69,13 +68,11 @@ export default async function (context) {
       for (const request of requests) {
         const requestItems = normalizeItems(request.items, request.other);
 
-        // ✅ overlap + score
         const overlap = donationItems.filter(item =>
           requestItems.includes(item)
         );
 
         const score = overlap.length;
-
         if (score === 0) continue;
 
         context.log(
@@ -83,7 +80,7 @@ export default async function (context) {
           overlap
         );
 
-        // ✅ prevent duplicates
+        // Check if match already exists
         const existing = await databases.listDocuments(
           MATCH_DATABASE_ID,
           MATCH_COLLECTION_ID,
@@ -95,7 +92,7 @@ export default async function (context) {
 
         if (existing.total > 0) continue;
 
-        // ✅ create match
+        // Create new match
         await databases.createDocument(
           MATCH_DATABASE_ID,
           MATCH_COLLECTION_ID,
@@ -104,7 +101,7 @@ export default async function (context) {
             donationId: donation.$id,
             requestId: request.$id,
             items: overlap,
-            score, // ⭐ SCORE SYSTEM
+            score,
           }
         );
 
@@ -118,37 +115,9 @@ export default async function (context) {
   return context.res.empty();
 }
 
-/**
- * ✅ Normalizes:
- * - Arrays
- * - JSON strings
- * - Comma-separated strings
- * - "other" field
- * - Capitalization
- */
-function normalizeItems(items, other) {
-  let result = [];
-
-  if (Array.isArray(items)) {
-    result = items;
-  } else if (typeof items === "string") {
-    try {
-      const parsed = JSON.parse(items);
-      if (Array.isArray(parsed)) {
-        result = parsed;
-      } else {
-        result = items.split(",");
-      }
-    } catch {
-      result = items.split(",");
-    }
-  }
-
-  if (typeof other === "string" && other.trim()) {
-    result.push(...other.split(","));
-  }
-
-  return result
-    .map(i => i.trim().toLowerCase())
+// Normalize items: combine donation/request items with 'other', trim, lowercase
+function normalizeItems(items = [], other = []) {
+  return [...items, ...other]
+    .map(i => String(i).trim().toLowerCase())
     .filter(Boolean);
 }
