@@ -37,16 +37,19 @@ const DonationForm = () => {
     Keyboard.dismiss();
     setError(null);
 
-    const trimmedOther = other.trim();
-    const otherValue = trimmedOther.length > 0 ? trimmedOther : null;
+    const otherArray =
+      other
+        .split(",")
+        .map(item => item.trim())
+        .filter(item => item.length > 0);
 
-    if (selectedItems.length === 0 && !otherValue) {
+    if (selectedItems.length === 0 && otherArray.length === 0) {
       setError("Please select or enter at least one supply item.");
       return;
     }
 
     try {
-      await saveDonation(selectedItems, otherValue);
+      await saveDonation(selectedItems, otherArray);
       setSelectedItems([]);
       setOther("");
       alert("Thank you for your donation!");
