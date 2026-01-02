@@ -101,8 +101,8 @@ async function saveDonation(items, other = null) {
     ID.unique(),
     {
       userId: user.$id,
-      items: items.join(", "),                 // array
-      Other: other || null,   // null if empty
+      items: items,                 // array
+      Other: other,   // null if empty
     }
   );
 }
@@ -116,8 +116,8 @@ async function saveRequest(items, other = null) {
     ID.unique(),
     {
       userId: user.$id,
-      items: items.join(", "),                 // array
-      Other: other || null,   // null if empty
+      items: items,                 // array
+      Other: other,   // null if empty
     }
   );
 }
