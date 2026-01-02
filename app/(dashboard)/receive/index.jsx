@@ -51,17 +51,25 @@ const Receive = () => {
 
         <Spacer height={40} />
 
-        <View style={styles.centerButtonWrapper}>
+        <View style={styles.buttonRow}>
           <TouchableOpacity 
             style={styles.squareButton}
             onPress={() => router.push('/(dashboard)/receive/wishlist')}
           >
             <Ionicons name="heart-circle-outline" size={60} color="#f2f2f2" />
           </TouchableOpacity>
+        
+          <TouchableOpacity 
+            style={styles.squareButton}
+            onPress={() => router.push('/(dashboard)/receive/requestlist')}
+          >
+            <Ionicons name="list-outline" size={60} color="#f2f2f2" />
+          </TouchableOpacity>
         </View>
-
-        <View style={styles.singleTextRow}>
+        
+        <View style={styles.textRow}>
           <ThemedText style={styles.buttonLabel}>Add to Your Wishlist</ThemedText>
+          <ThemedText style={styles.buttonLabel}>Manage Your Requests</ThemedText>
         </View>
 
       </View>
@@ -132,17 +140,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     gap: 35,
-    marginTop: 8,
-  },
-
-  centerButtonWrapper: {
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-
-  singleTextRow: {
-    justifyContent: 'center',
-    alignItems: 'center',
     marginTop: 8,
   },
 

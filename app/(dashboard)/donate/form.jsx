@@ -1,15 +1,18 @@
-import { StyleSheet, TouchableOpacity, Keyboard } from "react-native";
+import { StyleSheet, TouchableOpacity, Keyboard, ScrollView, View, TouchableWithoutFeedback } from "react-native";
 import React, { useState } from "react";
-
 import Spacer from "../../../components/Spacer";
 import ThemedText from "../../../components/ThemedText";
 import ThemedView from "../../../components/ThemedView";
-import { useUser } from "../../../hooks/useUser";
 import ThemedTextInput from "../../../components/ThemedTextInput";
+import { useUser } from "../../../hooks/useUser";
+import * as Location from "expo-location";
 
 const DonationForm = () => {
   const [selectedItems, setSelectedItems] = useState([]);
   const [other, setOther] = useState("");
+  const [selectionMethod, setSelectionMethod] = useState(null);
+  const [zipCode, setZipCode] = useState("");
+  const [location, setLocation] = useState(null);
   const [error, setError] = useState(null);
 
   const { saveDonation } = useUser();
@@ -33,94 +36,195 @@ const DonationForm = () => {
     );
   };
 
+  const getLocation = async () => {
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== "granted") {
+        setError("Location permission denied.");
+        return;
+      }
+
+      const loc = await Location.getCurrentPositionAsync({});
+      setLocation({
+        latitude: loc.coords.latitude,
+        longitude: loc.coords.longitude,
+      });
+      setError(null);
+    } catch (err) {
+      setError("Failed to get location.");
+      console.log(err);
+    }
+  };
+
   const handleSubmit = async () => {
     Keyboard.dismiss();
     setError(null);
 
-    const otherArray =
-      other
-        .split(",")
-        .map(item => item.trim())
-        .filter(item => item.length > 0);
+    const otherArray = other
+      .split(",")
+      .map((item) => item.trim())
+      .filter((item) => item.length > 0);
 
+    // Must select at least one supply
     if (selectedItems.length === 0 && otherArray.length === 0) {
       setError("Please select or enter at least one supply item.");
       return;
     }
 
+    // Must select a matching method
+    if (!selectionMethod) {
+      setError("Please choose a matching method: Zip Code or Location.");
+      return;
+    }
+
+    // Validate zip code
+    let zipInt = null;
+    if (selectionMethod === "zip") {
+      if (zipCode.trim().length === 0) {
+        setError("Please enter a zip code.");
+        return;
+      }
+      zipInt = parseInt(zipCode.trim(), 10);
+      if (isNaN(zipInt)) {
+        setError("Zip code must be a valid number.");
+        return;
+      }
+    }
+
+    // Validate location
+    if (selectionMethod === "location") {
+      if (!location) {
+        setError("Please select your current location.");
+        return;
+      }
+    }
+
     try {
-      await saveDonation(selectedItems, otherArray);
+      await saveDonation(selectedItems, otherArray, {
+        zipCode: selectionMethod === "zip" ? zipInt : null,
+        lat: selectionMethod === "location" ? location.latitude : null,
+        lng: selectionMethod === "location" ? location.longitude : null,
+      });
+
+      // Reset form
       setSelectedItems([]);
       setOther("");
+      setZipCode("");
+      setLocation(null);
+      setSelectionMethod(null);
+
       alert("Thank you for your donation!");
     } catch (err) {
       setError(err.message || "Something went wrong.");
     }
   };
 
-
   return (
     <ThemedView style={styles.container}>
-      <ThemedText title style={styles.heading}>
-        Donation Form
-      </ThemedText>
-
-      <Spacer height={20} />
-
-      <ThemedText>Select Supplies to Donate:</ThemedText>
-      <Spacer height={10} />
-
-      {supplyOptions.map((item) => (
-        <TouchableOpacity
-          key={item}
-          onPress={() => toggleItem(item)}
-          style={[
-            styles.itemButton,
-            selectedItems.includes(item) && styles.itemSelected,
-          ]}
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
         >
-          <ThemedText
-            style={
-              selectedItems.includes(item)
-                ? styles.itemTextSelected
-                : styles.itemText
-            }
-          >
-            {item}
+          <ThemedText title style={styles.heading}>
+            Donation Form
           </ThemedText>
-        </TouchableOpacity>
-      ))}
 
-      <Spacer height={15} />
+          <Spacer height={20} />
 
-      {/* OPTIONAL OTHER INPUT */}
-      <ThemedTextInput
-        style={{ marginBottom: 20, width: "90%" }}
-        placeholder="Other (optional, comma-separated if needed)"
-        value={other}
-        onChangeText={setOther}
-      />
+          <ThemedText>Select Supplies to Donate:</ThemedText>
+          <Spacer height={10} />
 
-      {error && <ThemedText style={styles.error}>{error}</ThemedText>}
+          {supplyOptions.map((item) => (
+            <TouchableOpacity
+              key={item}
+              onPress={() => toggleItem(item)}
+              style={[
+                styles.itemButton,
+                selectedItems.includes(item) && styles.itemSelected,
+              ]}
+            >
+              <ThemedText
+                style={
+                  selectedItems.includes(item)
+                    ? styles.itemTextSelected
+                    : styles.itemText
+                }
+              >
+                {item}
+              </ThemedText>
+            </TouchableOpacity>
+          ))}
 
-      <Spacer height={15} />
+          <Spacer height={15} />
 
-      {/* SUBMIT */}
-      <TouchableOpacity style={styles.button} onPress={handleSubmit}>
-        <ThemedText style={styles.buttonText}>Submit Donation</ThemedText>
-      </TouchableOpacity>
+          {/* OTHER INPUT */}
+          <ThemedTextInput
+            style={{ marginBottom: 20, width: "90%" }}
+            placeholder="Other (optional, comma-separated)"
+            value={other}
+            onChangeText={setOther}
+          />
 
-      <Spacer height={10} />
+          <Spacer height={10} />
+          <ThemedText>Choose Matching Method:</ThemedText>
+          <Spacer height={10} />
 
-      {/* HIDE KEYBOARD */}
-      <TouchableOpacity
-        style={styles.hideKeyboardButton}
-        onPress={Keyboard.dismiss}
-      >
-        <ThemedText style={styles.hideKeyboardText}>
-          Hide Keyboard ⌄
-        </ThemedText>
-      </TouchableOpacity>
+          {/* Radio/MCQ selection */}
+          <View style={styles.radioContainer}>
+            <TouchableOpacity
+              style={[
+                styles.radioButton,
+                selectionMethod === "zip" && styles.radioSelected,
+              ]}
+              onPress={() => setSelectionMethod("zip")}
+            >
+              <ThemedText style={styles.radioText}>Use Zip Code</ThemedText>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[
+                styles.radioButton,
+                selectionMethod === "location" && styles.radioSelected,
+              ]}
+              onPress={() => setSelectionMethod("location")}
+            >
+              <ThemedText style={styles.radioText}>Use Current Location</ThemedText>
+            </TouchableOpacity>
+          </View>
+
+          <Spacer height={10} />
+
+          {selectionMethod === "zip" && (
+            <ThemedTextInput
+              style={{ marginBottom: 15, width: "90%" }}
+              placeholder="Enter Zip Code"
+              value={zipCode}
+              onChangeText={setZipCode}
+              keyboardType="numeric"
+            />
+          )}
+
+          {selectionMethod === "location" && (
+            <TouchableOpacity style={styles.button} onPress={getLocation}>
+              <ThemedText style={styles.buttonText}>
+                {location ? "Location Selected!" : "Use Current Location"}
+              </ThemedText>
+            </TouchableOpacity>
+          )}
+
+          {error && <ThemedText style={styles.error}>{error}</ThemedText>}
+
+          <Spacer height={15} />
+
+          {/* SUBMIT */}
+          <TouchableOpacity style={styles.button} onPress={handleSubmit}>
+            <ThemedText style={styles.buttonText}>Submit Donation</ThemedText>
+          </TouchableOpacity>
+
+          <Spacer height={20} />
+        </ScrollView>
+      </TouchableWithoutFeedback>
     </ThemedView>
   );
 };
@@ -130,6 +234,8 @@ export default DonationForm;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  scrollContent: {
     padding: 20,
     alignItems: "center",
   },
@@ -169,20 +275,33 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 25,
     borderRadius: 12,
+    marginVertical: 5,
   },
   buttonText: {
     color: "white",
     fontWeight: "bold",
     fontSize: 16,
+    textAlign: "center",
   },
-  hideKeyboardButton: {
-    marginTop: 10,
-    padding: 8,
+  radioContainer: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+    width: "90%",
+  },
+  radioButton: {
+    padding: 12,
     borderRadius: 10,
-    backgroundColor: "#ccc",
+    borderWidth: 1,
+    borderColor: "#ccc",
+    width: "48%",
+    alignItems: "center",
   },
-  hideKeyboardText: {
-    fontSize: 14,
+  radioSelected: {
+    backgroundColor: "#007AFF",
+    borderColor: "#007AFF",
+  },
+  radioText: {
     color: "black",
+    fontWeight: "bold",
   },
 });
