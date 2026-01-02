@@ -4,149 +4,249 @@ import { ID, Query } from "react-native-appwrite";
 
 export const UserContext = createContext();
 
+// ---------- IDs ----------
 const FEEDBACK_DB_ID = "6921e0910003970bf9bb";
-const FEEDBACK_COLLECTION_ID = "feedbackattributers"; // or your ID
+const FEEDBACK_COLLECTION_ID = "feedbackattributers";
+
+const REQUEST_DB_ID = "6944caa80022e2cfa289";
+const REQUEST_COLLECTION_ID = "requests";
+
+const DONATION_DB_ID = "69276d130021687546df";
+const DONATION_COLLECTION_ID = "donations";
+
+const MATCH_DB_ID = "6946ce09003051fcb9a2";
+const MATCH_COLLECTION_ID = "matches";
+// -------------------------
 
 export function UserProvider({ children }) {
   const [user, setUser] = useState(null);
   const [authChecked, setAuthChecked] = useState(false);
 
-  // --------------------------
-  // LOGIN
-  // --------------------------
+  // ---------------- LOGIN ----------------
   async function login(email, password) {
-    try {
-      await account.createEmailPasswordSession(email, password);
-      await getInitialUserValue();   // Load merged profile after login
-    } catch (error) {
-      throw new Error(error.message);
-    }
+    await account.createEmailPasswordSession(email, password);
+    await getInitialUserValue();
   }
 
-  // --------------------------
-  // REGISTER
-  // --------------------------
+  // ---------------- REGISTER ----------------
   async function register(email, password, name, label) {
-    try {
-      const newUser = await account.create(ID.unique(), email, password, name);
+    const newUser = await account.create(ID.unique(), email, password, name);
 
-      // Real Appwrite user ID
-      const authUserId = newUser.$id;
+    await database.createDocument(
+      process.env.EXPO_PUBLIC_APPWRITE_DATABASE_ID,
+      process.env.EXPO_PUBLIC_APPWRITE_USERS_COLLECTION_ID,
+      ID.unique(),
+      {
+        userID: newUser.$id,
+        name,
+        email,
+        label,
+      }
+    );
 
-      // Create linked profile document
-      await database.createDocument(
-        process.env.EXPO_PUBLIC_APPWRITE_DATABASE_ID,
-        process.env.EXPO_PUBLIC_APPWRITE_USERS_COLLECTION_ID,
-        ID.unique(),
-        {
-          userID: authUserId,
-          name,
-          email,
-          label
-        }
-      );
-
-      // Auto login
-      await login(email, password);
-
-    } catch (error) {
-      throw new Error(error.message);
-    }
+    await login(email, password);
   }
 
-  // --------------------------
-  // LOGOUT
-  // --------------------------
+  // ---------------- LOGOUT ----------------
   async function logout() {
     await account.deleteSession("current");
     setUser(null);
   }
 
-  // --------------------------
-  // MERGED AUTH + PROFILE LOADER
-  // (keeps your function name)
-  // --------------------------
+  // ---------------- LOAD USER ----------------
   async function getInitialUserValue() {
     try {
-      // 1. Get authenticated user
       const authUser = await account.get();
 
-      // 2. Get database profile
       const profile = await database.listDocuments(
         process.env.EXPO_PUBLIC_APPWRITE_DATABASE_ID,
         process.env.EXPO_PUBLIC_APPWRITE_USERS_COLLECTION_ID,
         [Query.equal("userID", authUser.$id)]
       );
 
-      const profileData = profile.documents[0] || {};
-
-      // 3. Merge into single user object
-      setUser({
-        ...authUser,
-        ...profileData
-      });
-
-    } catch (error) {
+      setUser({ ...authUser, ...(profile.documents[0] || {}) });
+    } catch {
       setUser(null);
     } finally {
       setAuthChecked(true);
     }
   }
-async function saveDonation(items, other = null) {
-  if (!user) throw new Error("User not logged in");
 
-  return await database.createDocument(
-    "69276d130021687546df",
-    "donations",
-    ID.unique(),
-    {
-      userId: user.$id,
-      items: items,                 // array
-      Other: other,   // null if empty
+  // ---------------- SAVE DONATION ----------------
+  async function saveDonation(items, other = null, locationData = {}) {
+    if (!user) throw new Error("User not logged in");
+
+    const { zipCode = null, lat = null, lng = null } = locationData;
+
+    return await database.createDocument(
+      DONATION_DB_ID,
+      DONATION_COLLECTION_ID,
+      ID.unique(),
+      {
+        userId: user.$id,
+        items,
+        Other: other || null,
+        zipCode,
+        lat,
+        lng,
+        donorEmail: user.email, // store donor email by default
+      }
+    );
+  }
+
+  // ---------------- SAVE REQUEST ----------------
+  async function saveRequest(items, other = null, locationData = {}) {
+    if (!user) throw new Error("User not logged in");
+
+    const { zipCode = null, lat = null, lng = null } = locationData;
+
+    return await database.createDocument(
+      REQUEST_DB_ID,
+      REQUEST_COLLECTION_ID,
+      ID.unique(),
+      {
+        userId: user.$id,
+        items,
+        Other: other || null,
+        zipCode,
+        lat,
+        lng,
+        requestorEmail: user.email, // store requestor email by default
+      }
+    );
+  }
+
+  // ---------------- FETCH REQUESTS + MATCHES ----------------
+  async function getRequestsWithMatches() {
+    if (!user) throw new Error("User not logged in");
+
+    const requestRes = await database.listDocuments(
+      REQUEST_DB_ID,
+      REQUEST_COLLECTION_ID,
+      [Query.equal("userId", user.$id)]
+    );
+
+    const enriched = [];
+
+    for (const request of requestRes.documents) {
+      const matchRes = await database.listDocuments(
+        MATCH_DB_ID,
+        MATCH_COLLECTION_ID,
+        [
+          Query.equal("requestId", request.$id),
+          Query.orderDesc("score"),
+          Query.limit(10),
+        ]
+      );
+
+      const matches = await Promise.all(
+        matchRes.documents.map(async (match) => {
+          const donation = await database.getDocument(
+            DONATION_DB_ID,
+            DONATION_COLLECTION_ID,
+            match.donationId
+          );
+
+          return {
+            ...match,
+            donation,
+            donorEmail: match.donorEmail || donation.donorEmail || null,
+            donorPhone: match.donorPhone || donation.donorPhone || null,
+            requestorEmail: match.requestorEmail || request.requestorEmail || null,
+            requestorPhone: match.requestorPhone || null,
+          };
+        })
+      );
+
+      enriched.push({ ...request, matches });
     }
-  );
-}
 
-async function saveRequest(items, other = null) {
-  if (!user) throw new Error("User not logged in");
+    return enriched;
+  }
 
-  return await database.createDocument(
-    "6944caa80022e2cfa289",
-    "requests",
-    ID.unique(),
-    {
-      userId: user.$id,
-      items: items,                 // array
-      Other: other,   // null if empty
+  // ---------------- UPDATE MATCH STATUS ----------------
+  async function updateMatchStatus(matchId, status, contactInfo = null, isRequestor = false) {
+    if (!user) throw new Error("User not logged in");
+
+    const updateData = { status };
+
+    if (status === "approved" && contactInfo) {
+      if (isRequestor) {
+        updateData.requestorEmail = contactInfo.email || null;
+        updateData.requestorPhone = contactInfo.phone;
+      } else {
+        updateData.donorEmail = contactInfo.email || null;
+        updateData.donorPhone = contactInfo.phone;
+      }
     }
-  );
-}
 
-async function saveFeedback(rating, text) { 
-  if (!user) throw new Error("User not logged in"); 
-  const feedbackData = { 
-    userId: user.$id, 
-    rating, 
-    text, 
-  }; 
-  return await database.createDocument( 
-    FEEDBACK_DB_ID, 
-    FEEDBACK_COLLECTION_ID, 
-    ID.unique(), 
-    feedbackData 
-  ); 
-}
+    return await database.updateDocument(
+      MATCH_DB_ID,
+      MATCH_COLLECTION_ID,
+      matchId,
+      updateData
+    );
+  }
 
+  // ---------------- SELECT MATCH ----------------
+  async function selectMatch(matchId) {
+    // Selecting a match sets its status to "pending"
+    return await updateMatchStatus(matchId, "pending");
+  }
 
+  // ---------------- PROVIDE CONTACT INFO ----------------
+  async function provideContactInfo(matchId, contactInfo) {
+    // Called by requestor after donor approves
+    const updatedMatch = await updateMatchStatus(matchId, "approved", contactInfo, true);
 
-  // Load on app start
+    // Optional: if you want to store the contact info in the request as well
+    const matchDoc = updatedMatch;
+    if (matchDoc.requestId) {
+      await database.updateDocument(
+        REQUEST_DB_ID,
+        REQUEST_COLLECTION_ID,
+        matchDoc.requestId,
+        {
+          [`matchContacts.${matchId}`]: contactInfo,
+        }
+      );
+    }
+
+    return updatedMatch;
+  }
+
+  // ---------------- FEEDBACK ----------------
+  async function saveFeedback(rating, text) {
+    if (!user) throw new Error("User not logged in");
+
+    return await database.createDocument(
+      FEEDBACK_DB_ID,
+      FEEDBACK_COLLECTION_ID,
+      ID.unique(),
+      { userId: user.$id, rating, text }
+    );
+  }
+
   useEffect(() => {
     getInitialUserValue();
   }, []);
 
   return (
     <UserContext.Provider
-      value={{ user, login, logout, register, authChecked, saveFeedback, saveDonation, saveRequest }}
+      value={{
+        user,
+        authChecked,
+        login,
+        logout,
+        register,
+        saveDonation,
+        saveRequest,
+        saveFeedback,
+        getRequestsWithMatches,
+        updateMatchStatus,
+        selectMatch,
+        provideContactInfo,
+      }}
     >
       {children}
     </UserContext.Provider>

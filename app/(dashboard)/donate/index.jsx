@@ -68,7 +68,7 @@ const Receive = () => {
 
         <View style={styles.textRow}>
           <ThemedText style={styles.buttonLabel}>View Wishlists</ThemedText>
-          <ThemedText style={styles.buttonLabel}>View Donation Lists</ThemedText>
+          <ThemedText style={styles.buttonLabel}>Manage Your Donations</ThemedText>
         </View>
 
       </View>
