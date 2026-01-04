@@ -89,7 +89,6 @@ export function UserProvider({ children }) {
         zipCode,
         lat,
         lng,
-        donorEmail: user.email, // store donor email by default
       }
     );
   }
@@ -111,7 +110,6 @@ export function UserProvider({ children }) {
         zipCode,
         lat,
         lng,
-        requestorEmail: user.email, // store requestor email by default
       }
     );
   }
