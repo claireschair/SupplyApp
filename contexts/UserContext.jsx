@@ -16,6 +16,9 @@ const DONATION_COLLECTION_ID = "donations";
 
 const MATCH_DB_ID = "6946ce09003051fcb9a2";
 const MATCH_COLLECTION_ID = "matches";
+
+const CENTER_DB_ID = "69599747001044200bfd";
+const CENTER_COLLECTION_ID = "centers";
 // -------------------------
 
 export function UserProvider({ children }) {
@@ -113,6 +116,126 @@ export function UserProvider({ children }) {
       }
     );
   }
+  // ---------------- SAVE DONATION CENTER ----------------
+  async function saveDonationCenter(items = [], locationData = {}) {
+    if (!user) throw new Error("User not logged in");
+
+    const {
+      name,
+      lat = null,
+      lng = null,
+    } = locationData;
+
+    if (!name || lat === null || lng === null) {
+      throw new Error("Missing location data");
+    }
+
+    return await database.createDocument(
+      CENTER_DB_ID,
+      CENTER_COLLECTION_ID,
+      ID.unique(),
+      {
+        name,
+        lat: lat,
+        lng: lng,
+        items,
+        verified: false,
+      }
+    );
+  }
+// ---------------- FETCH DONATION CENTER ----------------
+async function getDonationCenters() {
+  try {
+    const res = await database.listDocuments(
+      CENTER_DB_ID,
+      CENTER_COLLECTION_ID
+    );
+    return res.documents;
+  } catch (err) {
+    console.log("Failed to fetch donation centers", err);
+    return [];
+  }
+}
+
+
+  // ---------------- FETCH REQUESTS + MATCHES ----------------
+  async function getRequestsWithMatches() {
+    if (!user) throw new Error("User not logged in");
+
+    const requestRes = await database.listDocuments(
+      REQUEST_DB_ID,
+      REQUEST_COLLECTION_ID,
+      [Query.equal("userId", user.$id)]
+    );
+
+    const enriched = [];
+
+    for (const request of requestRes.documents) {
+      const matchRes = await database.listDocuments(
+        MATCH_DB_ID,
+        MATCH_COLLECTION_ID,
+        [
+          Query.equal("requestId", request.$id),
+          Query.orderDesc("score"),
+          Query.limit(10),
+        ]
+      );
+
+      const matches = await Promise.all(
+        matchRes.documents.map(async (match) => {
+          const donation = await database.getDocument(
+            DONATION_DB_ID,
+            DONATION_COLLECTION_ID,
+            match.donationId
+          );
+
+          return {
+            ...match,
+            donation,
+            donorEmail: match.donorEmail || donation.donorEmail || null,
+            donorPhone: match.donorPhone || donation.donorPhone || null,
+            requestorEmail: match.requestorEmail || request.requestorEmail || null,
+            requestorPhone: match.requestorPhone || null,
+          };
+        })
+      );
+
+      enriched.push({ ...request, matches });
+    }
+
+    return enriched;
+  }
+
+  // ---------------- UPDATE MATCH STATUS ----------------
+  async function updateMatchStatus(matchId, status, contactInfo = null, isRequestor = false) {
+    if (!user) throw new Error("User not logged in");
+
+    const updateData = { status };
+
+    if (status === "approved" && contactInfo) {
+      if (isRequestor) {
+        updateData.requestorEmail = contactInfo.email || null;
+        updateData.requestorPhone = contactInfo.phone;
+      } else {
+        updateData.donorEmail = contactInfo.email || null;
+        updateData.donorPhone = contactInfo.phone;
+      }
+    }
+
+    return await database.updateDocument(
+      MATCH_DB_ID,
+      MATCH_COLLECTION_ID,
+      matchId,
+      updateData
+    );
+  }
+
+  // ---------------- SELECT MATCH ----------------
+  async function selectMatch(matchId) {
+    // Selecting a match sets its status to "pending"
+    return await updateMatchStatus(matchId, "pending");
+  }
+
 
   // ---------------- FETCH REQUESTS + MATCHES ----------------
   async function getRequestsWithMatches() {
@@ -244,6 +367,8 @@ export function UserProvider({ children }) {
         updateMatchStatus,
         selectMatch,
         provideContactInfo,
+        saveDonationCenter,
+        getDonationCenters
       }}
     >
       {children}

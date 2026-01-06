@@ -8,5 +8,8 @@ export function useUser() {
     throw new Error("useUser must be used within a UserProvider")
   }
 
+
+
+
   return context
 }
