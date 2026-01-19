@@ -4,7 +4,7 @@ import Spacer from "../../../components/Spacer";
 import ThemedText from "../../../components/ThemedText";
 import ThemedView from "../../../components/ThemedView";
 import ThemedTextInput from "../../../components/ThemedTextInput";
-import { useUser } from "../../../hooks/useUser";
+import { useMatch } from "../../../hooks/useMatch";
 import * as Location from "expo-location";
 import { useRouter } from "expo-router";
 
@@ -16,7 +16,7 @@ const DonationForm = () => {
   const [location, setLocation] = useState(null);
   const [error, setError] = useState(null);
 
-  const { saveDonation } = useUser();
+  const { saveDonation } = useMatch();
   const router = useRouter();
 
   const supplyOptions = [

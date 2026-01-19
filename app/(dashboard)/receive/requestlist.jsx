@@ -1,4 +1,4 @@
-import { useEffect, useState, useContext } from "react";
+import { useEffect, useState } from "react";
 import {
   StyleSheet,
   ScrollView,
@@ -8,7 +8,8 @@ import {
   TextInput,
   Modal,
 } from "react-native";
-import { UserContext } from "../../../contexts/UserContext";
+
+import { useMatch } from "../../../hooks/useMatch"; 
 import Spacer from "../../../components/Spacer";
 import ThemedText from "../../../components/ThemedText";
 import ThemedView from "../../../components/ThemedView";
@@ -33,7 +34,8 @@ const SORT_LABELS = {
 };
 
 const RequestList = () => {
-  const { getRequestsWithMatches, selectMatch, provideContactInfo } = useContext(UserContext);
+  const { getRequestsWithMatches, selectMatch, provideContactInfo } = useMatch();
+
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [sortMode, setSortMode] = useState("score");
@@ -61,7 +63,7 @@ const RequestList = () => {
 
   const loadRequests = async () => {
     setLoading(true);
-    const data = await getRequestsWithMatches();
+    const data = await getRequestsWithMatches(); 
     const processed = await preprocessZipCodes(data || []);
     setRequests(processed);
     setLoading(false);
@@ -98,7 +100,7 @@ const RequestList = () => {
 
   const handleSelectMatch = async (matchId) => {
     try {
-      await selectMatch(matchId);
+      await selectMatch(matchId); 
       Alert.alert("Match selected!", "Waiting for donor approval.");
       await loadRequests();
     } catch (err) {
@@ -120,7 +122,7 @@ const RequestList = () => {
       return;
     }
     try {
-      await provideContactInfo(currentMatchId, {
+      await provideContactInfo(currentMatchId, { 
         email: contactEmail,
         phone: contactPhone,
       });
@@ -179,9 +181,8 @@ const RequestList = () => {
       <ScrollView>
         {requests.map((request) => {
           const sortedMatches = getSortedMatches(request);
-          const selectedMatch = sortedMatches.find(
-            (m) => m.status === "pending" || m.status === "approved"
-          );
+
+          const selectedMatch = sortedMatches.find((m) => m.status === "approved");
 
           return (
             <View key={request.$id} style={styles.requestCard}>
@@ -197,51 +198,46 @@ const RequestList = () => {
               <Spacer height={10} />
 
               {selectedMatch ? (
-                selectedMatch.status === "pending" ? (
+                !selectedMatch.requestorPhone ? (
                   <View style={styles.matchCard}>
                     <ThemedText style={[styles.subtle, { fontStyle: "italic" }]}>
-                      Pending Approval from donor
+                      Match approved! Please provide your contact info:
                     </ThemedText>
+                    <TouchableOpacity
+                      style={[styles.selectButton, { marginTop: 10 }]}
+                      onPress={() => openContactModal(selectedMatch.$id)}
+                    >
+                      <ThemedText>Provide Contact Info</ThemedText>
+                    </TouchableOpacity>
                   </View>
-                ) : selectedMatch.status === "approved" ? (
-                  !selectedMatch.requestorPhone ? (
-                    <View style={styles.matchCard}>
-                      <ThemedText style={[styles.subtle, { fontStyle: "italic" }]}>
-                        Match approved! Please provide your contact info:
-                      </ThemedText>
-                      <TouchableOpacity
-                        style={[styles.selectButton, { marginTop: 10 }]}
-                        onPress={() => openContactModal(selectedMatch.$id)}
-                      >
-                        <ThemedText>Provide Contact Info</ThemedText>
-                      </TouchableOpacity>
-                    </View>
-                  ) : (
-                    <View style={styles.matchCard}>
-                      <ThemedText style={styles.matchTitle}>
-                        Donor Contact Information
-                      </ThemedText>
-                      <ThemedText>Email: {selectedMatch.donorEmail || "N/A"}</ThemedText>
-                      <ThemedText>Phone: {selectedMatch.donorPhone || "N/A"}</ThemedText>
-                    </View>
-                  )
-                ) : null
+                ) : (
+                  <View style={styles.matchCard}>
+                    <ThemedText style={styles.matchTitle}>
+                      Donor Contact Information
+                    </ThemedText>
+                    <ThemedText>Email: {selectedMatch.donorEmail || "N/A"}</ThemedText>
+                    <ThemedText>Phone: {selectedMatch.donorPhone || "N/A"}</ThemedText>
+                  </View>
+                )
               ) : sortedMatches.length > 0 ? (
-                <View style={styles.matchCard}>
-                  <ThemedText style={styles.matchTitle}>Best Match</ThemedText>
-                  <ThemedText>
-                    Score: {sortedMatches[0].score || 0} | Items: {sortedMatches[0].items?.length || 0}
-                  </ThemedText>
-                  <ThemedText style={styles.subtle}>
-                    Donation Zip: {sortedMatches[0].donation?.zipCode || "Location not provided"}
-                  </ThemedText>
-                  <TouchableOpacity
-                    style={[styles.selectButton, { marginTop: 5 }]}
-                    onPress={() => handleSelectMatch(sortedMatches[0].$id)}
-                  >
-                    <ThemedText>Select this match</ThemedText>
-                  </TouchableOpacity>
-                </View>
+                sortedMatches.map((m, index) => (
+                  <View key={m.$id} style={styles.matchCard}>
+                    <ThemedText style={styles.matchTitle}>Donation Match #{index + 1}</ThemedText>
+                    <ThemedText>
+                      Score: {m.score || 0} | Items: {m.items?.length || 0}
+                    </ThemedText>
+                    <ThemedText style={styles.subtle}>
+                      Donation Zip: {m.donation?.zipCode || "Location not provided"}
+                    </ThemedText>
+                    <TouchableOpacity
+                      style={[styles.selectButton, { marginTop: 5 }]}
+                      onPress={() => handleSelectMatch(m.$id)}
+                    >
+                      <ThemedText>Select this match</ThemedText>
+                    </TouchableOpacity>
+                  </View>
+                ))
+
               ) : (
                 <ThemedText style={styles.noMatch}>No matches available yet.</ThemedText>
               )}
@@ -249,6 +245,7 @@ const RequestList = () => {
           );
         })}
       </ScrollView>
+
 
       <Modal
         visible={contactModalVisible}

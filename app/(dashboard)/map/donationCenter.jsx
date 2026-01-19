@@ -10,12 +10,12 @@ import MapView, { Marker } from "react-native-maps";
 import ThemedView from "../../../components/ThemedView";
 import ThemedText from "../../../components/ThemedText";
 import Spacer from "../../../components/Spacer";
-import { useUser } from "../../../hooks/useUser";
+import { useMap } from "../../../hooks/useMap";
 
 import PlaceSearchInput from "./PlaceSearchInput";
 
 const SelectDonationLocation = () => {
-  const { saveDonationCenter } = useUser();
+  const { saveDonationCenter } = useMap();
 
   const [items, setItems] = useState("");
   const [location, setLocation] = useState(null);
@@ -60,7 +60,6 @@ const SelectDonationLocation = () => {
 
   return (
     <ThemedView style={styles.container}>
-      {/* SEARCH OVERLAY */}
       <View style={styles.searchOverlay}>
         <PlaceSearchInput
           onSelect={({ name, latitude, longitude }) => {
@@ -70,7 +69,6 @@ const SelectDonationLocation = () => {
         />
       </View>
 
-      {/* MAP */}
       <MapView
         style={styles.map}
         region={
@@ -82,12 +80,9 @@ const SelectDonationLocation = () => {
           }
         }
       >
-        {location && (
-          <Marker coordinate={location} title={placeName} />
-        )}
+        {location && <Marker coordinate={location} title={placeName} />}
       </MapView>
 
-      {/* FORM */}
       <View style={styles.form}>
         <TextInput
           style={styles.input}
@@ -125,7 +120,7 @@ const styles = StyleSheet.create({
     top: 50,
     left: 16,
     right: 16,
-    zIndex: 1000, // 🔥 REQUIRED
+    zIndex: 1000,
   },
   map: {
     flex: 1,

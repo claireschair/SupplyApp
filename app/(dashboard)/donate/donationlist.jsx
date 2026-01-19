@@ -8,17 +8,16 @@ import {
   TextInput,
   Modal,
 } from "react-native";
-import { UserContext } from "../../../contexts/UserContext";
+import { useMatch } from "../../../hooks/useMatch"; 
 import Spacer from "../../../components/Spacer";
 import ThemedText from "../../../components/ThemedText";
 import ThemedView from "../../../components/ThemedView";
 
 const DonationList = () => {
-  const { user, getRequestsWithMatches, updateMatchStatus } = useContext(UserContext);
+  const { user, getRequestsWithMatches, updateMatchStatus } = useMatch();
   const [donationsWithMatches, setDonationsWithMatches] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Contact modal for approving
   const [contactModalVisible, setContactModalVisible] = useState(false);
   const [selectedMatch, setSelectedMatch] = useState(null);
   const [contactInfo, setContactInfo] = useState({ email: "", phone: "" });
@@ -31,8 +30,6 @@ const DonationList = () => {
 
       for (const request of requests) {
         for (const match of request.matches || []) {
-          // Only include matches for donations owned by this user
-          // AND that the requestor actually requested
           if (match.donation?.userId === user.$id) {
             matchesForUserDonations.push({ request, match });
           }
@@ -51,7 +48,6 @@ const DonationList = () => {
     loadMatches();
   }, []);
 
-  // Open approve modal
   const handleApprove = ({ request, match }) => {
     setSelectedMatch({ request, match });
     setContactInfo({ email: "", phone: "" });
@@ -117,7 +113,6 @@ const DonationList = () => {
         )}
 
         {donationsWithMatches.map(({ request, match }) => {
-          // Approved matches show contact card
           if (match.status === "approved") {
             return (
               <View key={match.$id} style={styles.card}>

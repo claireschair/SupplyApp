@@ -4,9 +4,9 @@ import Spacer from "../../../components/Spacer";
 import ThemedText from "../../../components/ThemedText";
 import ThemedView from "../../../components/ThemedView";
 import ThemedTextInput from "../../../components/ThemedTextInput";
-import { useUser } from "../../../hooks/useUser";
 import * as Location from "expo-location";
 import { useRouter } from "expo-router";
+import { useMatch } from "../../../hooks/useMatch";
 
 const ReceiveForm = () => {
   const [selectedItems, setSelectedItems] = useState([]);
@@ -16,7 +16,7 @@ const ReceiveForm = () => {
   const [location, setLocation] = useState(null);
   const [error, setError] = useState(null);
 
-  const { saveRequest } = useUser();
+  const { saveRequest } = useMatch();
   const router = useRouter();
 
   const supplyOptions = [

@@ -1,53 +1,31 @@
 import { StyleSheet, TouchableOpacity } from "react-native";
 import { useEffect, useState } from "react";
 import MapView, { Marker } from "react-native-maps";
-import * as Location from "expo-location";
 import { useRouter } from "expo-router";
 
 import ThemedView from "../../../components/ThemedView";
 import ThemedText from "../../../components/ThemedText";
-import { useUser } from "../../../hooks/useUser";
+import { useMap } from "../../../hooks/useMap";
 
 const Map = () => {
-  const { getDonationCenters } = useUser(); // ✅ FIX
+  const { getDonationCenters } = useMap();
   const router = useRouter();
 
   const [location, setLocation] = useState(null);
   const [centers, setCenters] = useState([]);
   const [selectedCenter, setSelectedCenter] = useState(null);
 
- /* useEffect(() => {
-    (async () => {
-      const { status } =
-        await Location.requestForegroundPermissionsAsync();
-
-      if (status !== "granted") {
-        console.log("Permission denied");
-        return;
-      }
-
-      const userLocation =
-        await Location.getCurrentPositionAsync({});
-
-      setLocation(userLocation.coords);
-
-      const data = await getDonationCenters();
-      console.log("Centers:", data); // 🔍 debug
-      setCenters(data);
-    })();
-  }, []);*/
   useEffect(() => {
-  (async () => {
-    try {
-      const data = await getDonationCenters();
-      console.log("RAW donation centers:", data);
-      setCenters(data);
-    } catch (e) {
-      console.log("Error fetching centers:", e);
-    }
-  })();
-}, []);
-
+    (async () => {
+      try {
+        const data = await getDonationCenters();
+        console.log("RAW donation centers:", data);
+        setCenters(data);
+      } catch (e) {
+        console.log("Error fetching centers:", e);
+      }
+    })();
+  }, []);
 
   return (
     <ThemedView style={styles.container}>
@@ -90,14 +68,10 @@ const Map = () => {
           </ThemedText>
 
           <ThemedText>
-            {selectedCenter.verified
-              ? "✅ Verified"
-              : "⚠️ Unverified"}
+            {selectedCenter.verified ? "Verified" : "Unverified"}
           </ThemedText>
 
-          <ThemedText style={styles.sectionTitle}>
-            Items Available:
-          </ThemedText>
+          <ThemedText style={styles.sectionTitle}>Items Available:</ThemedText>
 
           {selectedCenter.items?.length ? (
             selectedCenter.items.map((item, idx) => (
@@ -107,39 +81,31 @@ const Map = () => {
             <ThemedText>No items listed</ThemedText>
           )}
 
-          <ThemedText style={styles.closeHint}>
-            Tap to close
-          </ThemedText>
+          <ThemedText style={styles.closeHint}>Tap to close</ThemedText>
         </TouchableOpacity>
       )}
 
       <TouchableOpacity
         style={styles.addButton}
-        onPress={() =>
-          router.push("/(dashboard)/map/donationCenter")
-        }
+        onPress={() => router.push("/(dashboard)/map/donationCenter")}
       >
-        <ThemedText style={styles.addButtonText}>
-          + Add Donation Center
-        </ThemedText>
+        <ThemedText style={styles.addButtonText}>+ Add Donation Center</ThemedText>
       </TouchableOpacity>
     </ThemedView>
   );
 };
 
-export default Map
-
-
+export default Map;
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
   map: { flex: 1 },
 
   addButton: {
-    position: 'absolute',
+    position: "absolute",
     bottom: 30,
-    alignSelf: 'center',
-    backgroundColor: '#4F46E5',
+    alignSelf: "center",
+    backgroundColor: "#4F46E5",
     paddingHorizontal: 20,
     paddingVertical: 12,
     borderRadius: 25,
@@ -147,36 +113,33 @@ const styles = StyleSheet.create({
   },
 
   addButtonText: {
-    color: 'white',
-    fontWeight: '600',
+    color: "white",
+    fontWeight: "600",
   },
   detailsCard: {
-  position: "absolute",
-  bottom: 90,
-  left: 16,
-  right: 16,
-  backgroundColor: "white",
-  padding: 16,
-  borderRadius: 16,
-  elevation: 6,
-},
-centerTitle: {
-  fontSize: 18,
-  fontWeight: "bold",
-},
-status: {
-  marginBottom: 8,
-},
-sectionTitle: {
-  marginTop: 8,
-  fontWeight: "600",
-},
-closeHint: {
-  marginTop: 10,
-  textAlign: "right",
-  color: "#4F46E5",
-},
-
-})
-
-
+    position: "absolute",
+    bottom: 90,
+    left: 16,
+    right: 16,
+    backgroundColor: "white",
+    padding: 16,
+    borderRadius: 16,
+    elevation: 6,
+  },
+  centerTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+  },
+  status: {
+    marginBottom: 8,
+  },
+  sectionTitle: {
+    marginTop: 8,
+    fontWeight: "600",
+  },
+  closeHint: {
+    marginTop: 10,
+    textAlign: "right",
+    color: "#4F46E5",
+  },
+});

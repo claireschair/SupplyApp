@@ -4,14 +4,15 @@ import React, { useState } from "react";
 import Spacer from "../../../../components/Spacer";
 import ThemedText from "../../../../components/ThemedText";
 import ThemedView from "../../../../components/ThemedView";
-import { useUser } from "../../../../hooks/useUser";
+import { useFeedback } from "../../../../hooks/useFeedback";
 
 const Feedback = () => {
-  const [rating, setRating] = useState(0);        
-  const [feedback, setFeedback] = useState("");   
-  const [error, setError] = useState(null);       
-  const [isFocused, setIsFocused] = useState(false);  // <- added
-  const { saveFeedback } = useUser();
+  const [rating, setRating] = useState(0);
+  const [feedback, setFeedback] = useState("");
+  const [error, setError] = useState(null);
+  const [isFocused, setIsFocused] = useState(false);
+
+  const { saveFeedback } = useFeedback();
 
   const handleSubmit = async () => {
     setError(null);
@@ -27,19 +28,18 @@ const Feedback = () => {
       setFeedback("");
       alert("Thank you for your feedback!");
     } catch (err) {
-      setError(err.message);
+      setError(err.message || "Something went wrong.");
     }
   };
 
   return (
     <ThemedView style={styles.container}>
-      <ThemedText title={true} style={styles.heading}>
+      <ThemedText title style={styles.heading}>
         Feedback Form
       </ThemedText>
 
       <Spacer />
 
-      {/* ⭐ STAR RATING */}
       <ThemedText>Rate your experience:</ThemedText>
       <Spacer height={10} />
 
@@ -55,18 +55,16 @@ const Feedback = () => {
 
       <Spacer height={20} />
 
-      {/* ✍️ TEXT FEEDBACK */}
       <TextInput
         style={styles.input}
         placeholder="Write your feedback..."
         value={feedback}
         onChangeText={setFeedback}
         multiline
-        onFocus={() => setIsFocused(true)}   // <- added
-        onBlur={() => setIsFocused(false)}   // <- added
+        onFocus={() => setIsFocused(true)}
+        onBlur={() => setIsFocused(false)}
       />
 
-      {/* ⬇️ HIDE KEYBOARD BUTTON (shows only while typing) */}
       {isFocused && (
         <View style={styles.keyboardButtonWrapper}>
           <TouchableOpacity style={styles.keyboardButton} onPress={Keyboard.dismiss}>
@@ -77,12 +75,10 @@ const Feedback = () => {
 
       <Spacer height={15} />
 
-      {/* ERROR MESSAGE */}
       {error && <ThemedText style={styles.error}>{error}</ThemedText>}
 
       <Spacer height={10} />
 
-      {/* SUBMIT BUTTON */}
       <TouchableOpacity style={styles.button} onPress={handleSubmit}>
         <ThemedText style={styles.buttonText}>Submit</ThemedText>
       </TouchableOpacity>
@@ -125,8 +121,6 @@ const styles = StyleSheet.create({
     textAlignVertical: "top",
     backgroundColor: "white",
   },
-
-  /* ⬇️ Styles for keyboard button */
   keyboardButtonWrapper: {
     width: "90%",
     alignItems: "flex-end",
@@ -142,7 +136,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#333",
   },
-
   error: {
     color: "red",
     fontSize: 14,
