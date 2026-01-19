@@ -6,7 +6,7 @@ import { UserContext } from "./UserContext";
 export const MapContext = createContext();
 
 const CENTER_DB_ID = "69599747001044200bfd"; 
-const CENTERS_COLLECTION_ID = "centers";
+const CENTER_COLLECTION_ID = "centers";
 
 export function MapProvider({ children }) {
   const { user } = useContext(UserContext);

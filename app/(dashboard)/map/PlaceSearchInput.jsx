@@ -10,9 +10,6 @@ import ThemedText from "../../../components/ThemedText";
 import * as Location from "expo-location";
 import { useEffect, useState } from "react";
 
-
-const MAPBOX_TOKEN = process.env.EXPO_PUBLIC_MAPBOX_TOKEN;
-
 const PlaceSearchInput = ({ onSelect }) => {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState([]);
@@ -20,8 +17,7 @@ const PlaceSearchInput = ({ onSelect }) => {
 
   useEffect(() => {
     (async () => {
-      const { status } =
-        await Location.requestForegroundPermissionsAsync();
+      const { status } = await Location.requestForegroundPermissionsAsync();
 
       if (status !== "granted") return;
 
@@ -33,45 +29,62 @@ const PlaceSearchInput = ({ onSelect }) => {
     })();
   }, []);
 
-
-
-  //console.log("Mapbox token:", MAPBOX_TOKEN);
-
-
   const searchPlaces = async (text) => {
-  setQuery(text);
+    setQuery(text);
 
-  if (text.length < 3) {
-    setResults([]);
-    return;
-  }
+    if (text.length < 3) {
+      setResults([]);
+      return;
+    }
 
-  const proximity =
-    userLocation
-      ? `&proximity=${userLocation.longitude},${userLocation.latitude}`
+    // Build viewbox parameter for proximity-based results if user location is available
+    const viewbox = userLocation
+      ? `&viewbox=${userLocation.longitude - 0.5},${userLocation.latitude + 0.5},${userLocation.longitude + 0.5},${userLocation.latitude - 0.5}&bounded=0`
       : "";
 
-  try {
-    const res = await fetch(
-      `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(
-        text
-      )}.json?access_token=${MAPBOX_TOKEN}&types=poi,address&limit=5${proximity}`
-    );
+    try {
+      // OpenStreetMap Nominatim API
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/search?` +
+        `q=${encodeURIComponent(text)}` +
+        `&format=json` +
+        `&addressdetails=1` +
+        `&limit=5` +
+        `${viewbox}` +
+        'kumrnidhi@gmail.com', // Replace with your contact email
+        {
+          headers: {
+            'User-Agent': 'Reserve' // Replace with your app name
+          }
+        }
+      );
 
-    const data = await res.json();
-    setResults(data.features || []);
-  } catch (err) {
-    console.log("Autocomplete error", err);
-  }
-};
+      const data = await res.json();
+      setResults(data || []);
+    } catch (err) {
+      console.log("Autocomplete error", err);
+    }
+  };
 
+  // Helper function to get a clean display name
+  const getDisplayName = (item) => {
+    return item.display_name || item.name || "Unnamed location";
+  };
 
+  // Helper function to get a short name for selection
+  const getShortName = (item) => {
+    if (item.name) return item.name;
+    if (item.address?.amenity) return item.address.amenity;
+    if (item.address?.shop) return item.address.shop;
+    if (item.display_name) return item.display_name.split(',')[0];
+    return "Unnamed location";
+  };
 
   return (
     <View style={styles.wrapper}>
       <TextInput
         style={styles.input}
-        placeholder="Search for a place"
+        placeholder="Search for a place or address"
         value={query}
         onChangeText={searchPlaces}
       />
@@ -80,22 +93,29 @@ const PlaceSearchInput = ({ onSelect }) => {
         <View style={styles.resultsContainer}>
           <FlatList
             data={results}
-            keyExtractor={(item) => item.id}
+            keyExtractor={(item) => item.place_id.toString()}
             keyboardShouldPersistTaps="handled"
             renderItem={({ item }) => (
               <TouchableOpacity
                 style={styles.result}
                 onPress={() => {
-                  setQuery(item.place_name);
+                  const displayName = getDisplayName(item);
+                  setQuery(displayName);
                   setResults([]);
                   onSelect({
-                    name: item.text,
-                    latitude: item.center[1],
-                    longitude: item.center[0],
+                    name: getShortName(item),
+                    latitude: parseFloat(item.lat),
+                    longitude: parseFloat(item.lon),
+                    fullAddress: displayName,
                   });
                 }}
               >
-                <ThemedText>{item.place_name}</ThemedText>
+                <ThemedText>{getDisplayName(item)}</ThemedText>
+                {item.type && (
+                  <ThemedText style={styles.typeText}>
+                    {item.type}
+                  </ThemedText>
+                )}
               </TouchableOpacity>
             )}
           />
@@ -110,7 +130,7 @@ export default PlaceSearchInput;
 const styles = StyleSheet.create({
   wrapper: {
     width: "100%",
-    zIndex: 1000, // 👈 REQUIRED
+    zIndex: 1000,
   },
   input: {
     padding: 12,
@@ -128,10 +148,19 @@ const styles = StyleSheet.create({
     maxHeight: 200,
     zIndex: 1001,
     elevation: Platform.OS === "android" ? 10 : 0,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
   },
   result: {
     padding: 12,
     borderBottomWidth: 1,
     borderColor: "#eee",
+  },
+  typeText: {
+    fontSize: 12,
+    color: "#666",
+    marginTop: 2,
   },
 });
