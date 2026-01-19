@@ -1,4 +1,4 @@
-import { StyleSheet, TouchableOpacity, Keyboard, ScrollView, View, TouchableWithoutFeedback } from "react-native";
+import { StyleSheet, TouchableOpacity, Keyboard, ScrollView, View, TouchableWithoutFeedback, Alert } from "react-native";
 import React, { useState } from "react";
 import Spacer from "../../../components/Spacer";
 import ThemedText from "../../../components/ThemedText";
@@ -6,6 +6,7 @@ import ThemedView from "../../../components/ThemedView";
 import ThemedTextInput from "../../../components/ThemedTextInput";
 import { useUser } from "../../../hooks/useUser";
 import * as Location from "expo-location";
+import { useRouter } from "expo-router";
 
 const DonationForm = () => {
   const [selectedItems, setSelectedItems] = useState([]);
@@ -16,6 +17,7 @@ const DonationForm = () => {
   const [error, setError] = useState(null);
 
   const { saveDonation } = useUser();
+  const router = useRouter();
 
   const supplyOptions = [
     "Backpacks",
@@ -65,19 +67,16 @@ const DonationForm = () => {
       .map((item) => item.trim())
       .filter((item) => item.length > 0);
 
-    // Must select at least one supply
     if (selectedItems.length === 0 && otherArray.length === 0) {
       setError("Please select or enter at least one supply item.");
       return;
     }
 
-    // Must select a matching method
     if (!selectionMethod) {
       setError("Please choose a matching method: Zip Code or Location.");
       return;
     }
 
-    // Validate zip code
     let zipInt = null;
     if (selectionMethod === "zip") {
       if (zipCode.trim().length === 0) {
@@ -91,7 +90,6 @@ const DonationForm = () => {
       }
     }
 
-    // Validate location
     if (selectionMethod === "location") {
       if (!location) {
         setError("Please select your current location.");
@@ -106,14 +104,23 @@ const DonationForm = () => {
         lng: selectionMethod === "location" ? location.longitude : null,
       });
 
-      // Reset form
       setSelectedItems([]);
       setOther("");
       setZipCode("");
       setLocation(null);
       setSelectionMethod(null);
 
-      alert("Thank you for your donation!");
+      Alert.alert(
+        "Thank you!",
+        "Thank you for your donation!",
+        [
+          {
+            text: "OK",
+            onPress: () => router.replace("/donate/donationlist"),
+          },
+        ],
+        { cancelable: false }
+      );
     } catch (err) {
       setError(err.message || "Something went wrong.");
     }
@@ -158,7 +165,6 @@ const DonationForm = () => {
 
           <Spacer height={15} />
 
-          {/* OTHER INPUT */}
           <ThemedTextInput
             style={{ marginBottom: 20, width: "90%" }}
             placeholder="Other (optional, comma-separated)"
@@ -170,7 +176,6 @@ const DonationForm = () => {
           <ThemedText>Choose Matching Method:</ThemedText>
           <Spacer height={10} />
 
-          {/* Radio/MCQ selection */}
           <View style={styles.radioContainer}>
             <TouchableOpacity
               style={[
@@ -217,7 +222,6 @@ const DonationForm = () => {
 
           <Spacer height={15} />
 
-          {/* SUBMIT */}
           <TouchableOpacity style={styles.button} onPress={handleSubmit}>
             <ThemedText style={styles.buttonText}>Submit Donation</ThemedText>
           </TouchableOpacity>

@@ -1,4 +1,4 @@
-import { StyleSheet, TouchableOpacity, Keyboard, ScrollView, View, TouchableWithoutFeedback } from "react-native";
+import { StyleSheet, TouchableOpacity, Keyboard, ScrollView, View, TouchableWithoutFeedback, Alert } from "react-native";
 import React, { useState } from "react";
 import Spacer from "../../../components/Spacer";
 import ThemedText from "../../../components/ThemedText";
@@ -6,6 +6,7 @@ import ThemedView from "../../../components/ThemedView";
 import ThemedTextInput from "../../../components/ThemedTextInput";
 import { useUser } from "../../../hooks/useUser";
 import * as Location from "expo-location";
+import { useRouter } from "expo-router";
 
 const ReceiveForm = () => {
   const [selectedItems, setSelectedItems] = useState([]);
@@ -16,6 +17,7 @@ const ReceiveForm = () => {
   const [error, setError] = useState(null);
 
   const { saveRequest } = useUser();
+  const router = useRouter();
 
   const supplyOptions = [
     "Backpacks",
@@ -108,7 +110,17 @@ const ReceiveForm = () => {
       setLocation(null);
       setSelectionMethod(null);
 
-      alert("Thank you for your request!");
+      Alert.alert(
+        "Thank you!",
+        "Thank you for your request!",
+        [
+          {
+            text: "OK",
+            onPress: () => router.replace("/receive/requestlist"),
+          },
+        ],
+        { cancelable: false }
+      );
     } catch (err) {
       setError(err.message || "Something went wrong.");
     }

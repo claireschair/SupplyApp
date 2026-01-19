@@ -44,7 +44,6 @@ const RequestList = () => {
   const [contactEmail, setContactEmail] = useState("");
   const [contactPhone, setContactPhone] = useState("");
 
-  // ---------------- ZIP PREPROCESS ----------------
   const preprocessZipCodes = async (requests) => {
     for (const req of requests) {
       if (!req.zipCode && req.lat != null && req.lng != null) {
@@ -72,7 +71,6 @@ const RequestList = () => {
     loadRequests();
   }, []);
 
-  // ---------------- SORTING ----------------
   const getSortedMatches = (request) => {
     const matches = request.matches || [];
     return [...matches]
@@ -98,7 +96,6 @@ const RequestList = () => {
       });
   };
 
-  // ---------------- MATCH SELECTION ----------------
   const handleSelectMatch = async (matchId) => {
     try {
       await selectMatch(matchId);
@@ -110,7 +107,6 @@ const RequestList = () => {
     }
   };
 
-  // ---------------- CONTACT INFO MODAL ----------------
   const openContactModal = (matchId) => {
     setCurrentMatchId(matchId);
     setContactEmail("");
@@ -148,11 +144,8 @@ const RequestList = () => {
   return (
     <ThemedView style={styles.container}>
       <Spacer />
-      <ThemedText title style={styles.heading}>
-        Request Matches
-      </ThemedText>
+      <ThemedText title style={styles.heading}>Request Matches</ThemedText>
 
-      {/* DROPDOWN */}
       <View style={styles.dropdownWrapper}>
         <TouchableOpacity
           style={styles.dropdownButton}
@@ -186,8 +179,6 @@ const RequestList = () => {
       <ScrollView>
         {requests.map((request) => {
           const sortedMatches = getSortedMatches(request);
-
-          // Find the first match with any status
           const selectedMatch = sortedMatches.find(
             (m) => m.status === "pending" || m.status === "approved"
           );
@@ -213,7 +204,6 @@ const RequestList = () => {
                     </ThemedText>
                   </View>
                 ) : selectedMatch.status === "approved" ? (
-                  // Determine if requestor has provided info yet
                   !selectedMatch.requestorPhone ? (
                     <View style={styles.matchCard}>
                       <ThemedText style={[styles.subtle, { fontStyle: "italic" }]}>
@@ -227,7 +217,6 @@ const RequestList = () => {
                       </TouchableOpacity>
                     </View>
                   ) : (
-                    // Show contact card
                     <View style={styles.matchCard}>
                       <ThemedText style={styles.matchTitle}>
                         Donor Contact Information
@@ -237,31 +226,30 @@ const RequestList = () => {
                     </View>
                   )
                 ) : null
+              ) : sortedMatches.length > 0 ? (
+                <View style={styles.matchCard}>
+                  <ThemedText style={styles.matchTitle}>Best Match</ThemedText>
+                  <ThemedText>
+                    Score: {sortedMatches[0].score || 0} | Items: {sortedMatches[0].items?.length || 0}
+                  </ThemedText>
+                  <ThemedText style={styles.subtle}>
+                    Donation Zip: {sortedMatches[0].donation?.zipCode || "Location not provided"}
+                  </ThemedText>
+                  <TouchableOpacity
+                    style={[styles.selectButton, { marginTop: 5 }]}
+                    onPress={() => handleSelectMatch(sortedMatches[0].$id)}
+                  >
+                    <ThemedText>Select this match</ThemedText>
+                  </TouchableOpacity>
+                </View>
               ) : (
-                sortedMatches.map((match, index) => (
-                  <View key={match.$id} style={styles.matchCard}>
-                    <ThemedText style={styles.matchTitle}>Match #{index + 1}</ThemedText>
-                    <ThemedText>
-                      Score: {match.score || 0} | Items: {match.items?.length || 0}
-                    </ThemedText>
-                    <ThemedText style={styles.subtle}>
-                      Donation Zip: {match.donation?.zipCode || "Location not provided"}
-                    </ThemedText>
-                    <TouchableOpacity
-                      style={[styles.selectButton, { marginTop: 5 }]}
-                      onPress={() => handleSelectMatch(match.$id)}
-                    >
-                      <ThemedText>Select this match</ThemedText>
-                    </TouchableOpacity>
-                  </View>
-                ))
+                <ThemedText style={styles.noMatch}>No matches available yet.</ThemedText>
               )}
             </View>
           );
         })}
       </ScrollView>
 
-      {/* CONTACT MODAL */}
       <Modal
         visible={contactModalVisible}
         animationType="slide"
