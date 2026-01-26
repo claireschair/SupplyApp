@@ -10,11 +10,11 @@
   },
   "dependencies": {
     "@rnmapbox/maps": "^10.2.10",
-    "expo": "~54.0.30",
+    "expo": "~54.0.32",
     "expo-constants": "~18.0.10",
     "expo-linking": "~8.0.10",
     "expo-location": "~19.0.8",
-    "expo-router": "~6.0.19",
+    "expo-router": "~6.0.22",
     "expo-status-bar": "~3.0.9",
     "react": "19.1.0",
     "react-dom": "19.1.0",

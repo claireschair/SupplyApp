@@ -7,6 +7,7 @@ import { UserProvider } from "../contexts/UserContext";
 import { MapProvider } from "../contexts/MapContext";
 import { MatchProvider } from "../contexts/MatchContext";
 import { FeedbackProvider } from "../contexts/FeedbackContext";
+import { WishlistProvider } from "../contexts/WishlistContext";
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
@@ -14,6 +15,7 @@ export default function RootLayout() {
 
   return (
     <UserProvider>
+      <WishlistProvider>
       <MapProvider>
         <MatchProvider>
           <FeedbackProvider>
@@ -31,6 +33,7 @@ export default function RootLayout() {
           </FeedbackProvider>
         </MatchProvider>
       </MapProvider>
+      </WishlistProvider>
     </UserProvider>
   );
 }
