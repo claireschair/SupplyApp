@@ -10,8 +10,9 @@ const WISHLIST_COLLECTION_ID = "teacher_wishlists";
 
 export function WishlistProvider({ children }) {
   const { user } = useContext(UserContext);
+  const userId = user?.$id ?? null;
 
-  async function saveWishlist(name, amazonLink, items = []) {
+  async function saveWishlist(name, amazonLink, items = "") {
     if (!user) throw new Error("User not logged in");
 
     return await database.createDocument(
