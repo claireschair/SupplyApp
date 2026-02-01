@@ -8,13 +8,19 @@ import {
   TextInput,
   Modal,
 } from "react-native";
-import { useMatch } from "../../../hooks/useMatch"; 
+import { useMatch } from "../../../hooks/useMatch";
+import { UserContext } from "../../../contexts/UserContext";
+import { database } from "../../../lib/appwrite";
 import Spacer from "../../../components/Spacer";
 import ThemedText from "../../../components/ThemedText";
 import ThemedView from "../../../components/ThemedView";
 
+const ITEMS_DATABASE_ID = "69276d130021687546df";
+const MATCHES_COLLECTION_ID = "matches";
+
 const DonationList = () => {
-  const { user, getRequestsWithMatches, updateMatchStatus } = useMatch();
+  const { user } = useContext(UserContext);
+  const { getDonationsWithMatches, approveDonation, denyDonation } = useMatch();
   const [donationsWithMatches, setDonationsWithMatches] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -25,18 +31,8 @@ const DonationList = () => {
   const loadMatches = async () => {
     setLoading(true);
     try {
-      const requests = await getRequestsWithMatches();
-      const matchesForUserDonations = [];
-
-      for (const request of requests) {
-        for (const match of request.matches || []) {
-          if (match.donation?.userId === user.$id) {
-            matchesForUserDonations.push({ request, match });
-          }
-        }
-      }
-
-      setDonationsWithMatches(matchesForUserDonations);
+      const donations = await getDonationsWithMatches();
+      setDonationsWithMatches(donations || []);
     } catch (err) {
       console.warn("Failed to load matches:", err);
     } finally {
@@ -46,10 +42,22 @@ const DonationList = () => {
 
   useEffect(() => {
     loadMatches();
+
+    const unsubscribe = database.client.subscribe(
+      `databases.${ITEMS_DATABASE_ID}.collections.${MATCHES_COLLECTION_ID}.documents`,
+      (response) => {
+        console.log("Match update detected, reloading...");
+        loadMatches();
+      }
+    );
+
+    return () => {
+      unsubscribe();
+    };
   }, []);
 
-  const handleApprove = ({ request, match }) => {
-    setSelectedMatch({ request, match });
+  const handleApprove = (donation, match) => {
+    setSelectedMatch({ donation, match });
     setContactInfo({ email: "", phone: "" });
     setContactModalVisible(true);
   };
@@ -62,28 +70,44 @@ const DonationList = () => {
       return;
     }
 
-    await updateMatchStatus(selectedMatch.match.$id, "approved", {
-      email: contactInfo.email || null,
-      phone: contactInfo.phone,
-    });
+    try {
+      await approveDonation(selectedMatch.match.$id, {
+        email: contactInfo.email || null,
+        phone: contactInfo.phone,
+      });
 
-    setContactModalVisible(false);
-    setSelectedMatch(null);
-    loadMatches();
+      Alert.alert(
+        "Match Approved!",
+        "The requestor will now provide their contact info. Once they do, you'll see their information here."
+      );
+      setContactModalVisible(false);
+      setSelectedMatch(null);
+    } catch (err) {
+      console.error("Error approving match:", err);
+      Alert.alert("Error", err.message || "Failed to approve match.");
+    }
   };
 
-  const handleDeny = async ({ match }) => {
+  const handleDeny = async (donation, match) => {
     Alert.alert(
-      "Deny Match",
-      "Are you sure you want to deny this match?",
+      "Deny Match Request",
+      "Are you sure you want to deny this request? The requestor will be able to select a different match.",
       [
         { text: "Cancel", style: "cancel" },
         {
           text: "Deny",
           style: "destructive",
           onPress: async () => {
-            await updateMatchStatus(match.$id, "denied");
-            loadMatches();
+            try {
+              await denyDonation(match.$id);
+              Alert.alert(
+                "Request Denied",
+                "The match has been removed. Your donation is now available for other requests."
+              );
+            } catch (err) {
+              console.error("Error denying match:", err);
+              Alert.alert("Error", "Failed to deny match.");
+            }
           },
         },
       ]
@@ -99,33 +123,65 @@ const DonationList = () => {
     );
   }
 
+  const allMatches = donationsWithMatches.flatMap((donation) =>
+    (donation.matches || []).map((match) => ({ donation, match }))
+  );
+
   return (
     <ThemedView style={styles.container}>
       <Spacer />
       <ThemedText title style={styles.heading}>
-        Pending Matches for Your Donations
+        Match Requests for Your Donations
       </ThemedText>
       <Spacer />
 
       <ScrollView>
-        {donationsWithMatches.length === 0 && (
-          <ThemedText>No matches at the moment.</ThemedText>
+        {allMatches.length === 0 && (
+          <ThemedText>No match requests at the moment.</ThemedText>
         )}
 
-        {donationsWithMatches.map(({ request, match }) => {
-          if (match.status === "approved") {
+        {allMatches.map(({ donation, match }) => {
+          if (match.status === "approved" && !match.requestorPhone) {
             return (
               <View key={match.$id} style={styles.card}>
-                <ThemedText style={styles.bold}>
-                  Requestor Contact Info
+                <ThemedText style={styles.approvedTitle}>
+                  Match Approved - Waiting for Requestor
                 </ThemedText>
-                <ThemedText>
-                  Name: {request.userId} {/* Replace with requestor name if available */}
+                <ThemedText style={styles.subtitle}>
+                  Your Donation: {donation.items.join(", ")}
+                </ThemedText>
+                <ThemedText style={styles.infoText}>
+                  You've approved this match. Waiting for the requestor to provide their contact information.
+                </ThemedText>
+                <Spacer height={8} />
+                <ThemedText style={styles.subtle}>
+                  Requested Items: {match.request?.items?.join(", ") || "N/A"}
+                </ThemedText>
+              </View>
+            );
+          }
+
+          if (match.status === "approved" && match.requestorPhone) {
+            return (
+              <View key={match.$id} style={styles.card}>
+                <ThemedText style={styles.completeTitle}>
+                  ✓ Match Complete!
+                </ThemedText>
+                <ThemedText style={styles.subtitle}>
+                  Your Donation: {donation.items.join(", ")}
+                </ThemedText>
+                <Spacer height={8} />
+                <ThemedText style={styles.sectionTitle}>
+                  Requestor Contact Info:
                 </ThemedText>
                 <ThemedText>Email: {match.requestorEmail || "N/A"}</ThemedText>
                 <ThemedText>Phone: {match.requestorPhone || "N/A"}</ThemedText>
-                <ThemedText>
-                  Requested Items: {request.items.join(", ")}
+                <Spacer height={8} />
+                <ThemedText style={styles.subtle}>
+                  Requested Items: {match.request?.items?.join(", ") || "N/A"}
+                </ThemedText>
+                <ThemedText style={styles.infoText}>
+                  Please coordinate with the requestor to arrange pickup/delivery.
                 </ThemedText>
               </View>
             );
@@ -134,22 +190,32 @@ const DonationList = () => {
           if (match.status === "pending") {
             return (
               <View key={match.$id} style={styles.card}>
-                <ThemedText style={styles.bold}>
-                  Requestor: {request.userId} {/* Replace with requestor name if available */}
+                <ThemedText style={styles.pendingTitle}>
+                  New Match Request
                 </ThemedText>
-                <ThemedText>Requested Items: {request.items.join(", ")}</ThemedText>
-                <ThemedText>Donation Items: {match.donation.items.join(", ")}</ThemedText>
+                <ThemedText style={styles.subtitle}>
+                  Your Donation: {donation.items.join(", ")}
+                </ThemedText>
+                <ThemedText>
+                  Requested Items: {match.request?.items?.join(", ") || "N/A"}
+                </ThemedText>
+                <ThemedText style={styles.scoreText}>
+                  Match Score: {match.score || 0}
+                </ThemedText>
+                <ThemedText style={styles.infoText}>
+                  A requestor has selected your donation. Would you like to approve this match?
+                </ThemedText>
 
                 <View style={styles.buttonRow}>
                   <TouchableOpacity
                     style={[styles.button, styles.approveButton]}
-                    onPress={() => handleApprove({ request, match })}
+                    onPress={() => handleApprove(donation, match)}
                   >
                     <ThemedText style={styles.buttonText}>Approve</ThemedText>
                   </TouchableOpacity>
                   <TouchableOpacity
                     style={[styles.button, styles.denyButton]}
-                    onPress={() => handleDeny({ match })}
+                    onPress={() => handleDeny(donation, match)}
                   >
                     <ThemedText style={styles.buttonText}>Deny</ThemedText>
                   </TouchableOpacity>
@@ -165,9 +231,9 @@ const DonationList = () => {
       <Modal visible={contactModalVisible} transparent animationType="slide">
         <View style={styles.modalWrapper}>
           <View style={styles.modalContent}>
-            <ThemedText title>Enter Contact Info for Approval</ThemedText>
+            <ThemedText title>Approve Match</ThemedText>
             <ThemedText style={styles.hintText}>
-              Please provide your phone number (required) and email (optional)
+              Please provide your contact info so the requestor can reach you. Phone number is required.
             </ThemedText>
             <TextInput
               placeholder="Email (optional)"
@@ -175,6 +241,7 @@ const DonationList = () => {
               placeholderTextColor="#666"
               value={contactInfo.email}
               onChangeText={(t) => setContactInfo((p) => ({ ...p, email: t }))}
+              keyboardType="email-address"
             />
             <TextInput
               placeholder="Phone (required)"
@@ -182,6 +249,7 @@ const DonationList = () => {
               placeholderTextColor="#666"
               value={contactInfo.phone}
               onChangeText={(t) => setContactInfo((p) => ({ ...p, phone: t }))}
+              keyboardType="phone-pad"
             />
             <View style={styles.modalButtons}>
               <TouchableOpacity
@@ -194,7 +262,9 @@ const DonationList = () => {
                 style={[styles.modalButton, styles.confirmButton]}
                 onPress={confirmApprove}
               >
-                <ThemedText>Confirm</ThemedText>
+                <ThemedText style={{ color: "white", fontWeight: "bold" }}>
+                  Approve Match
+                </ThemedText>
               </TouchableOpacity>
             </View>
           </View>
@@ -215,12 +285,44 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     marginBottom: 15,
   },
-  bold: { fontWeight: "bold" },
-  buttonRow: { flexDirection: "row", justifyContent: "space-around", marginTop: 10 },
-  button: { padding: 10, borderRadius: 8 },
+  approvedTitle: {
+    fontWeight: "bold",
+    fontSize: 16,
+    color: "#4CAF50",
+  },
+  completeTitle: {
+    fontWeight: "bold",
+    fontSize: 16,
+    color: "#2196F3",
+  },
+  pendingTitle: {
+    fontWeight: "bold",
+    fontSize: 16,
+    color: "#FF9800",
+  },
+  sectionTitle: {
+    fontWeight: "bold",
+    fontSize: 14,
+    marginBottom: 4,
+  },
+  subtitle: { color: "#666", fontSize: 14, marginTop: 4 },
+  scoreText: { color: "#007AFF", fontSize: 14, marginTop: 4 },
+  infoText: {
+    fontSize: 13,
+    color: "#555",
+    marginTop: 6,
+    fontStyle: "italic",
+  },
+  subtle: { fontSize: 12, color: "#666", marginTop: 2 },
+  buttonRow: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+    marginTop: 12,
+  },
+  button: { padding: 10, borderRadius: 8, flex: 1, marginHorizontal: 5 },
   approveButton: { backgroundColor: "#4CAF50" },
   denyButton: { backgroundColor: "#F44336" },
-  buttonText: { color: "white", fontWeight: "bold" },
+  buttonText: { color: "white", fontWeight: "bold", textAlign: "center" },
   modalWrapper: {
     flex: 1,
     justifyContent: "center",
@@ -232,7 +334,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 20,
   },
-  hintText: { color: "#222", marginTop: 5, marginBottom: 10 },
+  hintText: { color: "#555", marginTop: 5, marginBottom: 10, fontSize: 14 },
   input: {
     borderWidth: 1,
     borderColor: "#ccc",
@@ -240,9 +342,20 @@ const styles = StyleSheet.create({
     marginVertical: 8,
     borderRadius: 8,
     color: "#000",
+    backgroundColor: "#fff",
   },
-  modalButtons: { flexDirection: "row", justifyContent: "space-between", marginTop: 15 },
-  modalButton: { flex: 1, padding: 10, borderRadius: 8, alignItems: "center", marginHorizontal: 5 },
+  modalButtons: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: 15,
+  },
+  modalButton: {
+    flex: 1,
+    padding: 12,
+    borderRadius: 8,
+    alignItems: "center",
+    marginHorizontal: 5,
+  },
   cancelButton: { backgroundColor: "#ccc" },
   confirmButton: { backgroundColor: "#4CAF50" },
 });

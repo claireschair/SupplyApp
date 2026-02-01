@@ -9,10 +9,14 @@ import {
   Modal,
 } from "react-native";
 
-import { useMatch } from "../../../hooks/useMatch"; 
+import { useMatch } from "../../../hooks/useMatch";
+import { database } from "../../../lib/appwrite";
 import Spacer from "../../../components/Spacer";
 import ThemedText from "../../../components/ThemedText";
 import ThemedView from "../../../components/ThemedView";
+
+const ITEMS_DATABASE_ID = "69276d130021687546df";
+const MATCHES_COLLECTION_ID = "matches";
 
 async function getZipFromLatLng(lat, lng) {
   try {
@@ -34,7 +38,12 @@ const SORT_LABELS = {
 };
 
 const RequestList = () => {
-  const { getRequestsWithMatches, selectMatch, provideContactInfo } = useMatch();
+  const {
+    getRequestsWithMatches,
+    selectMatch,
+    createAndSelectMatch,
+    provideRequestorContact,
+  } = useMatch();
 
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -63,14 +72,32 @@ const RequestList = () => {
 
   const loadRequests = async () => {
     setLoading(true);
-    const data = await getRequestsWithMatches(); 
-    const processed = await preprocessZipCodes(data || []);
-    setRequests(processed);
-    setLoading(false);
+    try {
+      const data = await getRequestsWithMatches();
+      const processed = await preprocessZipCodes(data || []);
+      setRequests(processed);
+    } catch (err) {
+      console.error("Error loading requests:", err);
+      Alert.alert("Error", "Failed to load requests");
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
     loadRequests();
+
+    const unsubscribe = database.client.subscribe(
+      `databases.${ITEMS_DATABASE_ID}.collections.${MATCHES_COLLECTION_ID}.documents`,
+      (response) => {
+        console.log("Match update detected, reloading...");
+        loadRequests();
+      }
+    );
+
+    return () => {
+      unsubscribe();
+    };
   }, []);
 
   const getSortedMatches = (request) => {
@@ -79,13 +106,16 @@ const RequestList = () => {
       .map((m) => {
         let zipDiff = null;
         if (request.zipCode && m.donation?.zipCode) {
-          zipDiff = Math.abs(Number(request.zipCode) - Number(m.donation.zipCode));
+          zipDiff = Math.abs(
+            Number(request.zipCode) - Number(m.donation.zipCode)
+          );
         }
         return { ...m, zipDiff };
       })
       .sort((a, b) => {
         if (sortMode === "score") return (b.score || 0) - (a.score || 0);
-        if (sortMode === "items") return (b.items?.length || 0) - (a.items?.length || 0);
+        if (sortMode === "items")
+          return (b.items?.length || 0) - (a.items?.length || 0);
         if (sortMode === "location") {
           const aHas = typeof a.zipDiff === "number";
           const bHas = typeof b.zipDiff === "number";
@@ -98,15 +128,37 @@ const RequestList = () => {
       });
   };
 
-  const handleSelectMatch = async (matchId) => {
-    try {
-      await selectMatch(matchId); 
-      Alert.alert("Match selected!", "Waiting for donor approval.");
-      await loadRequests();
-    } catch (err) {
-      console.error(err);
-      Alert.alert("Error", "Failed to select match.");
-    }
+  const handleSelectMatch = async (match, request) => {
+    Alert.alert(
+      "Select this match?",
+      "Once selected, you'll need to wait for the donor to approve. You can only select one match at a time.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Select",
+          onPress: async () => {
+            try {
+              if (match._isTemporary) {
+                await createAndSelectMatch(match.donation, request, {
+                  overlap: match.items,
+                  score: match.score,
+                });
+              } else {
+                await selectMatch(match.$id);
+              }
+              
+              Alert.alert(
+                "Match selected!",
+                "Waiting for donor to approve or deny your request."
+              );
+            } catch (err) {
+              console.error(err);
+              Alert.alert("Error", err.message || "Failed to select match.");
+            }
+          },
+        },
+      ]
+    );
   };
 
   const openContactModal = (matchId) => {
@@ -117,20 +169,23 @@ const RequestList = () => {
   };
 
   const handleProvideContact = async () => {
-    if (!contactPhone) {
+    if (!contactPhone.trim()) {
       Alert.alert("Error", "Phone number is required.");
       return;
     }
     try {
-      await provideContactInfo(currentMatchId, { 
-        email: contactEmail,
+      await provideRequestorContact(currentMatchId, {
+        email: contactEmail || null,
         phone: contactPhone,
       });
+      Alert.alert(
+        "Success!",
+        "Match complete! Your request and the donation have been matched. You can now coordinate with the donor."
+      );
       setContactModalVisible(false);
-      await loadRequests();
     } catch (err) {
       console.error(err);
-      Alert.alert("Error", "Failed to save contact info.");
+      Alert.alert("Error", err.message || "Failed to save contact info.");
     }
   };
 
@@ -146,7 +201,9 @@ const RequestList = () => {
   return (
     <ThemedView style={styles.container}>
       <Spacer />
-      <ThemedText title style={styles.heading}>Request Matches</ThemedText>
+      <ThemedText title style={styles.heading}>
+        Request Matches
+      </ThemedText>
 
       <View style={styles.dropdownWrapper}>
         <TouchableOpacity
@@ -167,7 +224,9 @@ const RequestList = () => {
                   setDropdownOpen(false);
                 }}
               >
-                <ThemedText style={sortMode === key && styles.dropdownActiveText}>
+                <ThemedText
+                  style={sortMode === key && styles.dropdownActiveText}
+                >
                   {label}
                 </ThemedText>
               </TouchableOpacity>
@@ -179,16 +238,30 @@ const RequestList = () => {
       <Spacer height={10} />
 
       <ScrollView>
+        {requests.length === 0 && (
+          <ThemedText style={styles.noMatch}>
+            No requests yet. Create a request to get matches!
+          </ThemedText>
+        )}
+
         {requests.map((request) => {
           const sortedMatches = getSortedMatches(request);
 
-          const selectedMatch = sortedMatches.find((m) => m.status === "approved");
+          const pendingMatch = sortedMatches.find((m) => m.status === "pending");
+
+          const approvedMatch = sortedMatches.find((m) => m.status === "approved");
+
+          const availableMatches = sortedMatches.filter(
+            (m) => !m.status || m._isTemporary
+          );
 
           return (
             <View key={request.$id} style={styles.requestCard}>
-              <ThemedText style={styles.requestTitle}>Requested Items:</ThemedText>
+              <ThemedText style={styles.requestTitle}>
+                Requested Items:
+              </ThemedText>
               <ThemedText>
-                {[...(request.items || []), ...(request.Other || [])].join(", ")}
+                {[...(request.items || []), ...(request.other || [])].join(", ")}
               </ThemedText>
 
               <ThemedText style={styles.subtle}>
@@ -197,55 +270,108 @@ const RequestList = () => {
 
               <Spacer height={10} />
 
-              {selectedMatch ? (
-                !selectedMatch.requestorPhone ? (
-                  <View style={styles.matchCard}>
-                    <ThemedText style={[styles.subtle, { fontStyle: "italic" }]}>
-                      Match approved! Please provide your contact info:
+              {approvedMatch && !approvedMatch.requestorPhone ? (
+                <View style={styles.matchCard}>
+                  <ThemedText style={styles.approvedTitle}>
+                    Donor Approved Your Request!
+                  </ThemedText>
+                  <ThemedText style={styles.infoText}>
+                    Please provide your contact information to complete the match.
+                  </ThemedText>
+                  <TouchableOpacity
+                    style={[
+                      styles.selectButton,
+                      { marginTop: 10, backgroundColor: "#4CAF50" },
+                    ]}
+                    onPress={() => openContactModal(approvedMatch.$id)}
+                  >
+                    <ThemedText style={{ color: "white", fontWeight: "bold" }}>
+                      Provide Contact Info
                     </ThemedText>
-                    <TouchableOpacity
-                      style={[styles.selectButton, { marginTop: 10 }]}
-                      onPress={() => openContactModal(selectedMatch.$id)}
-                    >
-                      <ThemedText>Provide Contact Info</ThemedText>
-                    </TouchableOpacity>
-                  </View>
-                ) : (
-                  <View style={styles.matchCard}>
-                    <ThemedText style={styles.matchTitle}>
-                      Donor Contact Information
-                    </ThemedText>
-                    <ThemedText>Email: {selectedMatch.donorEmail || "N/A"}</ThemedText>
-                    <ThemedText>Phone: {selectedMatch.donorPhone || "N/A"}</ThemedText>
-                  </View>
-                )
-              ) : sortedMatches.length > 0 ? (
-                sortedMatches.map((m, index) => (
-                  <View key={m.$id} style={styles.matchCard}>
-                    <ThemedText style={styles.matchTitle}>Donation Match #{index + 1}</ThemedText>
-                    <ThemedText>
-                      Score: {m.score || 0} | Items: {m.items?.length || 0}
-                    </ThemedText>
-                    <ThemedText style={styles.subtle}>
-                      Donation Zip: {m.donation?.zipCode || "Location not provided"}
-                    </ThemedText>
-                    <TouchableOpacity
-                      style={[styles.selectButton, { marginTop: 5 }]}
-                      onPress={() => handleSelectMatch(m.$id)}
-                    >
-                      <ThemedText>Select this match</ThemedText>
-                    </TouchableOpacity>
-                  </View>
-                ))
+                  </TouchableOpacity>
+                </View>
+              ) : approvedMatch && approvedMatch.requestorPhone ? (
+                <View style={styles.matchCard}>
+                  <ThemedText style={styles.completeTitle}>
+                    ✓ Match Complete!
+                  </ThemedText>
+                  <ThemedText style={styles.sectionTitle}>
+                    Donor Contact:
+                  </ThemedText>
+                  <ThemedText>
+                    Email: {approvedMatch.donorEmail || "N/A"}
+                  </ThemedText>
+                  <ThemedText>
+                    Phone: {approvedMatch.donorPhone || "N/A"}
+                  </ThemedText>
+                  <Spacer height={8} />
+                  <ThemedText style={styles.subtle}>
+                    Donation Items:{" "}
+                    {approvedMatch.donation?.items?.join(", ") || "N/A"}
+                  </ThemedText>
+                  <ThemedText style={styles.infoText}>
+                    Please coordinate with the donor to arrange pickup/delivery.
+                  </ThemedText>
+                </View>
+              ) : pendingMatch ? (
+                <View style={styles.matchCard}>
+                  <ThemedText style={styles.pendingTitle}>
+                    Waiting for Donor Response
+                  </ThemedText>
+                  <ThemedText style={styles.infoText}>
+                    You've selected a match. The donor will approve or deny your
+                    request soon.
+                  </ThemedText>
+                  <Spacer height={8} />
+                  <ThemedText style={styles.subtle}>
+                    Donation Items:{" "}
+                    {pendingMatch.donation?.items?.join(", ") || "N/A"}
+                  </ThemedText>
+                  <ThemedText style={styles.subtle}>
+                    Match Score: {pendingMatch.score || 0}
+                  </ThemedText>
+                </View>
+              ) : availableMatches.length > 0 ? (
+                <>
+                  <ThemedText style={styles.instructionText}>
+                    {availableMatches.length} potential{" "}
+                    {availableMatches.length === 1 ? "match" : "matches"} found!
+                    Select ONE to send a request to the donor.
+                  </ThemedText>
+                  {availableMatches.map((m, index) => (
+                    <View key={m.$id} style={styles.matchCard}>
+                      <ThemedText style={styles.matchTitle}>
+                        Match #{index + 1}
+                      </ThemedText>
+                      <ThemedText>
+                        Score: {m.score || 0} | Items: {m.items?.length || 0}
+                      </ThemedText>
+                      <ThemedText style={styles.itemsList}>
+                        Available: {m.donation?.items?.join(", ") || "N/A"}
+                      </ThemedText>
+                      <ThemedText style={styles.subtle}>
+                        Donation Zip:{" "}
+                        {m.donation?.zipCode || "Location not provided"}
+                      </ThemedText>
 
+                      <TouchableOpacity
+                        style={[styles.selectButton, { marginTop: 8 }]}
+                        onPress={() => handleSelectMatch(m, request)}
+                      >
+                        <ThemedText>Select this match</ThemedText>
+                      </TouchableOpacity>
+                    </View>
+                  ))}
+                </>
               ) : (
-                <ThemedText style={styles.noMatch}>No matches available yet.</ThemedText>
+                <ThemedText style={styles.noMatch}>
+                  No matches available yet. Check back soon!
+                </ThemedText>
               )}
             </View>
           );
         })}
       </ScrollView>
-
 
       <Modal
         visible={contactModalVisible}
@@ -256,7 +382,11 @@ const RequestList = () => {
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <ThemedText title style={{ marginBottom: 10 }}>
-              Provide Contact Info (Phone required)
+              Complete Your Match
+            </ThemedText>
+            <ThemedText style={styles.modalHint}>
+              Provide your contact info so the donor can reach you. Phone number
+              is required.
             </ThemedText>
 
             <TextInput
@@ -265,6 +395,7 @@ const RequestList = () => {
               value={contactEmail}
               onChangeText={setContactEmail}
               keyboardType="email-address"
+              placeholderTextColor="#666"
             />
             <TextInput
               style={[styles.input, { color: "#111" }]}
@@ -272,17 +403,37 @@ const RequestList = () => {
               value={contactPhone}
               onChangeText={setContactPhone}
               keyboardType="phone-pad"
+              placeholderTextColor="#666"
             />
 
-            <View style={{ flexDirection: "row", justifyContent: "space-between", marginTop: 10 }}>
+            <View
+              style={{
+                flexDirection: "row",
+                justifyContent: "space-between",
+                marginTop: 10,
+              }}
+            >
               <TouchableOpacity
-                style={[styles.selectButton, { flex: 1, marginRight: 5 }]}
+                style={[
+                  styles.selectButton,
+                  { flex: 1, marginRight: 5, backgroundColor: "#4CAF50" },
+                ]}
                 onPress={handleProvideContact}
               >
-                <ThemedText>Submit</ThemedText>
+                <ThemedText style={{ color: "white", fontWeight: "bold" }}>
+                  Submit
+                </ThemedText>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.selectButton, { flex: 1, marginLeft: 5, backgroundColor: "#f0f0f0", borderColor: "#ccc" }]}
+                style={[
+                  styles.selectButton,
+                  {
+                    flex: 1,
+                    marginLeft: 5,
+                    backgroundColor: "#f0f0f0",
+                    borderColor: "#ccc",
+                  },
+                ]}
                 onPress={() => setContactModalVisible(false)}
               >
                 <ThemedText>Cancel</ThemedText>
@@ -301,18 +452,104 @@ const styles = StyleSheet.create({
   container: { flex: 1, padding: 15 },
   heading: { fontSize: 20, fontWeight: "bold", textAlign: "center" },
   dropdownWrapper: { alignItems: "center", marginBottom: 10, zIndex: 1000 },
-  dropdownButton: { paddingVertical: 8, paddingHorizontal: 16, borderRadius: 20, borderWidth: 1, borderColor: "#ccc", backgroundColor: "white" },
-  dropdownMenu: { marginTop: 5, backgroundColor: "white", borderRadius: 10, borderWidth: 1, borderColor: "#ddd", width: 200, position: "absolute" },
+  dropdownButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: "#ccc",
+    backgroundColor: "white",
+  },
+  dropdownMenu: {
+    marginTop: 5,
+    backgroundColor: "white",
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "#ddd",
+    width: 200,
+    position: "absolute",
+    top: 40,
+  },
   dropdownItem: { padding: 10, alignItems: "center" },
   dropdownActiveText: { fontWeight: "bold", color: "#007AFF" },
-  requestCard: { backgroundColor: "#f5f5f5", padding: 15, borderRadius: 12, marginBottom: 20 },
-  requestTitle: { fontWeight: "bold" },
-  noMatch: { color: "#777", fontStyle: "italic" },
-  matchCard: { backgroundColor: "white", padding: 10, borderRadius: 10, marginTop: 8, borderWidth: 1, borderColor: "#ddd" },
-  matchTitle: { fontWeight: "bold" },
-  subtle: { fontSize: 12, color: "#666" },
-  selectButton: { marginTop: 5, padding: 8, borderRadius: 8, borderWidth: 1, borderColor: "#007AFF", backgroundColor: "#E0F0FF", alignItems: "center" },
-  modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "center", padding: 20 },
+  requestCard: {
+    backgroundColor: "#f5f5f5",
+    padding: 15,
+    borderRadius: 12,
+    marginBottom: 20,
+  },
+  requestTitle: { fontWeight: "bold", fontSize: 16 },
+  instructionText: {
+    fontSize: 13,
+    color: "#555",
+    fontStyle: "italic",
+    marginBottom: 8,
+    backgroundColor: "#E3F2FD",
+    padding: 8,
+    borderRadius: 6,
+  },
+  noMatch: { color: "#777", fontStyle: "italic", marginTop: 8 },
+  matchCard: {
+    backgroundColor: "white",
+    padding: 12,
+    borderRadius: 10,
+    marginTop: 8,
+    borderWidth: 1,
+    borderColor: "#ddd",
+  },
+  matchTitle: { fontWeight: "bold", fontSize: 15 },
+  approvedTitle: {
+    fontWeight: "bold",
+    fontSize: 16,
+    color: "#4CAF50",
+  },
+  completeTitle: {
+    fontWeight: "bold",
+    fontSize: 16,
+    color: "#2196F3",
+  },
+  pendingTitle: {
+    fontWeight: "bold",
+    fontSize: 16,
+    color: "#FF9800",
+  },
+  sectionTitle: {
+    fontWeight: "bold",
+    fontSize: 14,
+    marginTop: 8,
+    marginBottom: 4,
+  },
+  infoText: {
+    fontSize: 13,
+    color: "#555",
+    marginTop: 4,
+    fontStyle: "italic",
+  },
+  itemsList: { fontSize: 14, marginTop: 4, color: "#333" },
+  subtle: { fontSize: 12, color: "#666", marginTop: 2 },
+  selectButton: {
+    marginTop: 5,
+    padding: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#007AFF",
+    backgroundColor: "#E0F0FF",
+    alignItems: "center",
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "center",
+    padding: 20,
+  },
   modalContent: { backgroundColor: "white", borderRadius: 10, padding: 20 },
-  input: { borderWidth: 1, borderColor: "#ccc", borderRadius: 8, padding: 10, marginBottom: 10 },
+  modalHint: { fontSize: 14, color: "#666", marginBottom: 10 },
+  input: {
+    borderWidth: 1,
+    borderColor: "#ccc",
+    borderRadius: 8,
+    padding: 10,
+    marginBottom: 10,
+    backgroundColor: "#fff",
+  },
 });
