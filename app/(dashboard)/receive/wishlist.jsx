@@ -140,7 +140,7 @@ const Wishlist = () => {
           <View style={styles.itemInputWrapper}>
             <TextInput
               style={[styles.input, styles.itemInput]}
-              placeholder="e.g., Winter coat"
+              placeholder="e.g., Desk organizer"
               value={itemInput}
               onChangeText={setItemInput}
               onFocus={() => setIsFocused(true)}

@@ -1,4 +1,4 @@
-import { StyleSheet, TouchableOpacity, Keyboard, ScrollView, View, TouchableWithoutFeedback, Alert } from "react-native";
+import { StyleSheet, TouchableOpacity, Keyboard, ScrollView, View, TouchableWithoutFeedback, Alert, TextInput } from "react-native";
 import React, { useState } from "react";
 import Spacer from "../../../components/Spacer";
 import ThemedText from "../../../components/ThemedText";
@@ -10,7 +10,8 @@ import { useRouter } from "expo-router";
 
 const DonationForm = () => {
   const [selectedItems, setSelectedItems] = useState([]);
-  const [other, setOther] = useState("");
+  const [otherItems, setOtherItems] = useState([]);
+  const [otherInput, setOtherInput] = useState("");
   const [selectionMethod, setSelectionMethod] = useState(null);
   const [zipCode, setZipCode] = useState("");
   const [location, setLocation] = useState(null);
@@ -38,6 +39,17 @@ const DonationForm = () => {
     );
   };
 
+  const handleAddOtherItem = () => {
+    if (otherInput.trim()) {
+      setOtherItems([...otherItems, otherInput.trim()]);
+      setOtherInput("");
+    }
+  };
+
+  const handleRemoveOtherItem = (index) => {
+    setOtherItems(otherItems.filter((_, i) => i !== index));
+  };
+
   const getLocation = async () => {
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
@@ -62,13 +74,8 @@ const DonationForm = () => {
     Keyboard.dismiss();
     setError(null);
 
-    const otherArray = other
-      .split(",")
-      .map((item) => item.trim())
-      .filter((item) => item.length > 0);
-
-    if (selectedItems.length === 0 && otherArray.length === 0) {
-      setError("Please select or enter at least one supply item.");
+    if (selectedItems.length === 0 && otherItems.length === 0) {
+      setError("Please select or add at least one supply item.");
       return;
     }
 
@@ -98,14 +105,15 @@ const DonationForm = () => {
     }
 
     try {
-      await saveDonation(selectedItems, otherArray, {
+      await saveDonation(selectedItems, otherItems, {
         zipCode: selectionMethod === "zip" ? zipInt : null,
         lat: selectionMethod === "location" ? location.latitude : null,
         lng: selectionMethod === "location" ? location.longitude : null,
       });
 
       setSelectedItems([]);
-      setOther("");
+      setOtherItems([]);
+      setOtherInput("");
       setZipCode("");
       setLocation(null);
       setSelectionMethod(null);
@@ -165,14 +173,40 @@ const DonationForm = () => {
 
           <Spacer height={15} />
 
-          <ThemedTextInput
-            style={{ marginBottom: 20, width: "90%" }}
-            placeholder="Other (optional, comma-separated)"
-            value={other}
-            onChangeText={setOther}
-          />
-
+          <ThemedText>Add Other Items (Optional):</ThemedText>
           <Spacer height={10} />
+
+          <View style={styles.otherInputWrapper}>
+            <TextInput
+              style={[styles.otherInput, { color: "#111" }]}
+              placeholder="e.g., Glue sticks"
+              value={otherInput}
+              onChangeText={setOtherInput}
+              onSubmitEditing={handleAddOtherItem}
+              returnKeyType="done"
+            />
+            <TouchableOpacity 
+              style={styles.addButton} 
+              onPress={handleAddOtherItem}
+            >
+              <ThemedText style={styles.addButtonText}>Add</ThemedText>
+            </TouchableOpacity>
+          </View>
+
+          {otherItems.length > 0 && (
+            <View style={styles.otherItemsList}>
+              {otherItems.map((item, index) => (
+                <View key={index} style={styles.otherItemChip}>
+                  <ThemedText style={styles.otherItemText}>{item}</ThemedText>
+                  <TouchableOpacity onPress={() => handleRemoveOtherItem(index)}>
+                    <ThemedText style={styles.removeButton}>✕</ThemedText>
+                  </TouchableOpacity>
+                </View>
+              ))}
+            </View>
+          )}
+
+          <Spacer height={20} />
           <ThemedText>Choose Matching Method:</ThemedText>
           <Spacer height={10} />
 
@@ -267,6 +301,56 @@ const styles = StyleSheet.create({
   itemTextSelected: {
     textAlign: "center",
     color: "white",
+    fontWeight: "bold",
+  },
+  otherInputWrapper: {
+    flexDirection: "row",
+    width: "90%",
+    gap: 10,
+  },
+  otherInput: {
+    flex: 1,
+    backgroundColor: "white",
+    borderWidth: 1,
+    borderColor: "#ddd",
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 16,
+  },
+  addButton: {
+    backgroundColor: "#007AFF",
+    paddingHorizontal: 20,
+    justifyContent: "center",
+    borderRadius: 8,
+  },
+  addButtonText: {
+    color: "white",
+    fontWeight: "600",
+  },
+  otherItemsList: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    marginTop: 12,
+    width: "90%",
+  },
+  otherItemChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#E0F0FF",
+    borderRadius: 20,
+    paddingVertical: 6,
+    paddingLeft: 12,
+    paddingRight: 8,
+    gap: 8,
+  },
+  otherItemText: {
+    fontSize: 14,
+    color: "#007AFF",
+  },
+  removeButton: {
+    fontSize: 16,
+    color: "#007AFF",
     fontWeight: "bold",
   },
   error: {
