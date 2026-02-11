@@ -141,6 +141,7 @@ const DonationForm = () => {
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
         >
+          <Spacer height={90} />
           <ThemedText title style={styles.heading}>
             Donation Form
           </ThemedText>
@@ -150,26 +151,54 @@ const DonationForm = () => {
           <ThemedText>Select Supplies to Donate:</ThemedText>
           <Spacer height={10} />
 
-          {supplyOptions.map((item) => (
-            <TouchableOpacity
-              key={item}
-              onPress={() => toggleItem(item)}
-              style={[
-                styles.itemButton,
-                selectedItems.includes(item) && styles.itemSelected,
-              ]}
-            >
-              <ThemedText
-                style={
-                  selectedItems.includes(item)
-                    ? styles.itemTextSelected
-                    : styles.itemText
-                }
-              >
-                {item}
-              </ThemedText>
-            </TouchableOpacity>
-          ))}
+          <View style={styles.supplyContainer}>
+            <View style={styles.column}>
+                {supplyOptions.slice(0, 4).map((item) => (
+                  <TouchableOpacity
+                    key={item}
+                    onPress={() => toggleItem(item)}
+                    style={[
+                      styles.itemButton,
+                      selectedItems.includes(item) && styles.itemSelected,
+                    ]}
+                  >
+                    <ThemedText
+                      style={
+                        selectedItems.includes(item)
+                          ? styles.itemTextSelected
+                          : styles.itemText
+                      }
+                    >
+                      {item}
+                    </ThemedText>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              <View style={styles.column}>
+                {supplyOptions.slice(4).map((item) => (
+                  <TouchableOpacity
+                    key={item}
+                    onPress={() => toggleItem(item)}
+                    style={[
+                      styles.itemButton,
+                      selectedItems.includes(item) && styles.itemSelected,
+                    ]}
+                  >
+                    <ThemedText
+                      style={
+                        selectedItems.includes(item)
+                          ? styles.itemTextSelected
+                          : styles.itemText
+                      }
+                    >
+                      {item}
+                    </ThemedText>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+
 
           <Spacer height={15} />
 
@@ -269,75 +298,99 @@ const DonationForm = () => {
 
 export default DonationForm;
 
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#F0F4F8', 
   },
   scrollContent: {
     padding: 20,
-    alignItems: "center",
+    alignItems: 'center',
   },
   heading: {
-    fontWeight: "bold",
-    fontSize: 22,
-    textAlign: "center",
+    fontWeight: 'bold',
+    fontSize: 28,
+    color: '#1F2A37',
+    textAlign: 'center',
+  },
+  supplyContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '85%',
+    gap: 10,
+    marginTop: 10,
+  },
+  column: {
+    flex: 1,
+    gap: 10,
   },
   itemButton: {
-    width: "90%",
-    padding: 12,
-    marginVertical: 5,
-    borderRadius: 10,
+    paddingVertical: 14,
+    borderRadius: 25,
     borderWidth: 1,
-    borderColor: "#ccc",
+    borderColor: '#ccc',
+    backgroundColor: '#fff',
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowRadius: 5,
+    shadowOffset: { width: 0, height: 3 },
+    alignItems: 'center',
   },
   itemSelected: {
-    backgroundColor: "#007AFF",
-    borderColor: "#007AFF",
+    backgroundColor: '#4A90E2',
+    borderColor: '#4A90E2',
+    shadowOpacity: 0.2,
   },
   itemText: {
-    textAlign: "center",
-    color: "black",
+    textAlign: 'center',
+    color: '#333',
+    fontWeight: '500',
   },
   itemTextSelected: {
-    textAlign: "center",
-    color: "white",
-    fontWeight: "bold",
+    textAlign: 'center',
+    color: '#fff',
+    fontWeight: 'bold',
   },
   otherInputWrapper: {
-    flexDirection: "row",
-    width: "90%",
+    flexDirection: 'row',
+    width: '90%',
     gap: 10,
+    marginTop: 10,
   },
   otherInput: {
     flex: 1,
-    backgroundColor: "white",
-    borderWidth: 1,
-    borderColor: "#ddd",
-    borderRadius: 8,
-    padding: 12,
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
     fontSize: 16,
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowRadius: 5,
+    shadowOffset: { width: 0, height: 2 },
   },
   addButton: {
-    backgroundColor: "#007AFF",
+    backgroundColor: '#4A90E2',
     paddingHorizontal: 20,
-    justifyContent: "center",
-    borderRadius: 8,
+    borderRadius: 20,
+    justifyContent: 'center',
   },
   addButtonText: {
-    color: "white",
-    fontWeight: "600",
+    color: '#fff',
+    fontWeight: '600',
   },
   otherItemsList: {
-    flexDirection: "row",
-    flexWrap: "wrap",
+    flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 8,
     marginTop: 12,
-    width: "90%",
+    width: '90%',
   },
   otherItemChip: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#E0F0FF",
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#DCEEFF',
     borderRadius: 20,
     paddingVertical: 6,
     paddingLeft: 12,
@@ -346,50 +399,77 @@ const styles = StyleSheet.create({
   },
   otherItemText: {
     fontSize: 14,
-    color: "#007AFF",
+    color: '#4A90E2',
+    fontWeight: '500',
   },
   removeButton: {
     fontSize: 16,
-    color: "#007AFF",
-    fontWeight: "bold",
-  },
-  error: {
-    color: "red",
-    fontSize: 14,
-    marginBottom: 10,
-  },
-  button: {
-    backgroundColor: "#007AFF",
-    paddingVertical: 12,
-    paddingHorizontal: 25,
-    borderRadius: 12,
-    marginVertical: 5,
-  },
-  buttonText: {
-    color: "white",
-    fontWeight: "bold",
-    fontSize: 16,
-    textAlign: "center",
+    color: '#4A90E2',
+    fontWeight: 'bold',
   },
   radioContainer: {
-    flexDirection: "row",
-    justifyContent: "space-around",
-    width: "90%",
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '90%',
+    marginTop: 10,
   },
   radioButton: {
-    padding: 12,
-    borderRadius: 10,
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 25,
     borderWidth: 1,
-    borderColor: "#ccc",
-    width: "48%",
-    alignItems: "center",
+    borderColor: '#ccc',
+    alignItems: 'center',
+    marginHorizontal: 5,
+    backgroundColor: '#fff',
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowRadius: 5,
+    shadowOffset: { width: 0, height: 2 },
   },
   radioSelected: {
-    backgroundColor: "#007AFF",
-    borderColor: "#007AFF",
+    backgroundColor: '#4A90E2',
+    borderColor: '#4A90E2',
   },
   radioText: {
-    color: "black",
-    fontWeight: "bold",
+    color: '#333',
+    fontWeight: '600',
   },
+  button: {
+    backgroundColor: '#4A90E2',
+    paddingVertical: 16,
+    paddingHorizontal: 25,
+    borderRadius: 30,
+    marginVertical: 15,
+    width: '90%',
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 5 },
+    alignItems: 'center',
+  },
+  buttonText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 18,
+    textAlign: 'center',
+  },
+  error: {
+    color: 'red',
+    fontSize: 14,
+    marginBottom: 10,
+    marginTop: 5,
+  },
+  sectionCard: {
+    width: '95%',
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    padding: 20,
+    marginVertical: 10,
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 5,
+},
 });

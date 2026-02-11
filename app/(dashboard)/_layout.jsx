@@ -1,4 +1,4 @@
-import { StyleSheet, View, Text, Image, useColorScheme } from 'react-native';
+import { StyleSheet, View, Text, Image, useColorScheme, Pressable } from 'react-native';
 import React from 'react';
 import { Tabs } from 'expo-router';
 import { Colors } from '../../constants/Colors';

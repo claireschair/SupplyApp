@@ -49,34 +49,48 @@ const Profile = () => {
       <View style={styles.header}>
         <View style={styles.curveOverlay} />
         <Spacer />
-        <ThemedLogo />
+        <Image
+          source={require('../../../assets/icons/profile.png')}
+          style={styles.profileImage}
+        />
 
         <Spacer height={5} />
         <ThemedText title style={styles.heading}>
           {user.name}
         </ThemedText>
-        <Spacer height={20} />
+        
 
         <Spacer height={5} />
-        <ThemedText title style={styles.heading}>
+        <ThemedText title style={styles.subheading}>
           {user.label}
         </ThemedText>
-        <Spacer height={20} />
+
+        <Spacer height={5} />
+        <ThemedText title style={styles.subheading}>
+          trust me I have an idea but i need to talk w/ yall
+        </ThemedText>
+
       </View>
 
       
-      <ThemedButton style={styles.button} onPress={() => router.push('/(dashboard)/profile/requests')}>
-        <Text style={{ color: '#f2f2f2' }}>Requests</Text>
-      </ThemedButton>
-      <Spacer height={20} />
+      <View style={styles.rowButtons}>
+        <ThemedButton 
+          style={[styles.button, { backgroundColor: '#415ba8ff' }]} 
+         onPress={() => router.push('/(dashboard)/profile/requests')}
+        >
+         <Text style={[styles.buttonText, { color: '#f2f2f2' }]}>Requests</Text>
+        </ThemedButton>
 
-      <ThemedButton style={styles.button} onPress={() => router.push('/(dashboard)/profile/donations')}>
-        <Text style={{ color: '#f2f2f2' }}>Donations</Text>
-      </ThemedButton>
-      <Spacer height={20} />
+        <ThemedButton 
+         style={[styles.button, { backgroundColor: '#f2f2f2', borderWidth: 2, borderColor: '#415ba8ff' }]} 
+        onPress={() => router.push('/(dashboard)/profile/donations')}
+        >
+         <Text style={[styles.buttonText, { color: '#415ba8ff' }]}>Donations</Text>
+        </ThemedButton>
+      </View>
 
       <ThemedButton style={styles.button} onPress={() => router.push('/(dashboard)/profile/wishlist')}>
-        <Text style={{ color: '#f2f2f2' }}>Wishlist</Text>
+        <Text style={styles.buttonText}>Wishlist</Text>
       </ThemedButton>
       <Spacer height={10} />
       
@@ -115,6 +129,15 @@ const styles = StyleSheet.create({
     zIndex: 0,
   },
 
+  profileImage: {
+    width: 120,
+    height: 120,
+    borderRadius: 100, 
+    marginTop: 25,
+    zIndex: 1,
+    backgroundColor: '#bcd7f5ff', 
+  },
+
   header: {
     width: '100%',
     alignItems: 'center',
@@ -151,14 +174,40 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
 
+  subheading: {
+    fontSize: 18,       
+    fontWeight: '500',    
+    color: '#555',        
+    textAlign: 'center',
+    marginTop: 4,       
+    zIndex: 1,
+    maxWidth: "65%"
+},
+
   button: {
-    width: "80%",
+    width: "50%",
     height: 60,
     alignItems: 'center',
     justifyContent: 'center',
     alignSelf: 'center',
     marginVertical: 6,
+    borderRadius: 30
   },
+
+  rowButtons: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    width: '65%', 
+    alignSelf: 'center',
+    marginVertical: 10,
+    gap: 20, 
+  },
+
+  buttonText: {
+    color: '#f2f2f2',
+    fontSize: 18,   
+    fontWeight: '600',
+},
 
   // specialized buttons
 
