@@ -302,7 +302,7 @@ export default DonationForm;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F0F4F8', 
+    backgroundColor: '#bcd7f5ff', 
   },
   scrollContent: {
     padding: 20,

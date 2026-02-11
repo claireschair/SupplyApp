@@ -22,6 +22,7 @@ const Home = () => {
         <ThemedText title style={styles.heading}>
           Reserve
         </ThemedText>
+        <Spacer height={20} />
       <ThemedText style={styles.subheading}>
         Our Mission
       </ThemedText>
@@ -29,7 +30,7 @@ const Home = () => {
         Reserve aims to expand access to education by helping school supplies reach the students and teachers who need them most.
         We do this by re-serving gently used and donated materials, connecting communities to local resources, 
         and support classrooms through shared wishlists and direct giving. Our mission is simple: reduce waste, increase 
-        opportunitiy, and make learning possible for everyone. 
+        opportunity, and make learning possible for everyone. 
       </ThemedText>
 
 
@@ -50,9 +51,11 @@ const Home = () => {
 
       <Spacer />
 
+      <View style={styles.howItWorksCard}>
       <ThemedText style={styles.subheading}>
         How Reserve Works
       </ThemedText>
+      <Spacer height={10} />
       <View style = {styles.stepItem}>
         <Image source={require('../../assets/icons/donate.png')} style={styles.stepIcon}/>
         <View style = {styles.stepTextContainer}>
@@ -74,19 +77,17 @@ const Home = () => {
       <View style = {styles.stepItem}>
         <Image source={require('../../assets/icons/receive.png')} style={styles.stepIcon}/>
         <View style = {styles.stepTextContainer}>
-          <ThemedText style = {styles.stepTitle}>Recieve</ThemedText>
+          <ThemedText style = {styles.stepTitle}>Receive</ThemedText>
           <ThemedText style={styles.stepDescription}>
             Request supplies or get connected with nearby resources.
           </ThemedText>
         </View>
       </View>
       </View>
-
-
-      <Spacer />
-      <View style={styles.content}>
-        <ThemedText>Welcome!</ThemedText>
       </View>
+
+
+      <Spacer height={100} />
 
     </ScrollView>
     </ThemedView>
@@ -136,10 +137,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   subheading: {
-    fontSize: 22,
-    fontWeight: '600',
+    fontSize: 23,
+    fontWeight: '700',
     color: '#4A90E2',
-    marginTop: 30,
+    marginTop: 10,
     textAlign: 'center',
   },
   paragraph: {
@@ -172,6 +173,12 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     paddingHorizontal: 5,
+
+    shadowColor: "#000",
+    shadowOpacity: 0.15,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 6,
   },
   statText: {
     fontSize: 29,
@@ -225,4 +232,20 @@ const styles = StyleSheet.create({
     marginTop: 5,
     marginLeft: 10,
   },
+  howItWorksCard: {
+    width: '90%',
+    alignSelf: 'center',
+    backgroundColor:  'rgb(255, 255, 255)',
+    borderRadius: 28,
+    paddingVertical: 25,
+    paddingHorizontal: 10,
+    marginTop: 40,
+
+    shadowColor: '#000',
+    shadowOpacity: 0.08,
+    shadowRadius: 20,
+    shadowOffset: { width: 0, height: 10 },
+    elevation: 8,
+},
+
 })
