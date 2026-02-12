@@ -151,29 +151,55 @@ const ReceiveForm = () => {
           <ThemedText>Select Supplies Needed:</ThemedText>
           <Spacer height={10} />
 
-         <View style={styles.supplyButtonContainer}>
-         {supplyOptions.map((item) => (
-            <TouchableOpacity
-              key={item}
-              onPress={() => toggleItem(item)}
-              style={[
-              styles.itemButton,
-                selectedItems.includes(item) && styles.itemSelected,
-              ]}
-            >
-              <ThemedText
-                style={
-                  selectedItems.includes(item)
-                    ? styles.itemTextSelected
-                    : styles.itemText
-                }
-              >
-                {item}
-              </ThemedText>
-            </TouchableOpacity>
-          ))}
-        </View>
-    <Spacer height={15} />
+         <View style={styles.supplyContainer}>
+           <View style={styles.column}>
+             {supplyOptions.slice(0, 4).map((item) => (
+               <TouchableOpacity
+                 key={item}
+                 onPress={() => toggleItem(item)}
+                 style={[
+                   styles.itemButton,
+                   selectedItems.includes(item) && styles.itemSelected,
+                 ]}
+               >
+                 <ThemedText
+                   style={
+                     selectedItems.includes(item)
+                       ? styles.itemTextSelected
+                       : styles.itemText
+                   }
+                 >
+                   {item}
+                 </ThemedText>
+               </TouchableOpacity>
+             ))}
+           </View>
+
+           <View style={styles.column}>
+             {supplyOptions.slice(4).map((item) => (
+               <TouchableOpacity
+                 key={item}
+                 onPress={() => toggleItem(item)}
+                 style={[
+                   styles.itemButton,
+                   selectedItems.includes(item) && styles.itemSelected,
+                 ]}
+               >
+                 <ThemedText
+                   style={
+                     selectedItems.includes(item)
+                       ? styles.itemTextSelected
+                       : styles.itemText
+                   }
+                 >
+                   {item}
+                 </ThemedText>
+               </TouchableOpacity>
+             ))}
+           </View>
+         </View>
+
+        <Spacer height={15} />
 
           <ThemedText>Add Other Items (Optional):</ThemedText>
           <Spacer height={10} />
