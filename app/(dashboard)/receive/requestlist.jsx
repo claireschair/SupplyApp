@@ -17,6 +17,8 @@ import ThemedView from "../../../components/ThemedView";
 
 const ITEMS_DATABASE_ID = "69276d130021687546df";
 const MATCHES_COLLECTION_ID = "matches";
+const DONATIONS_COLLECTION_ID = "donations";
+const REQUESTS_COLLECTION_ID = "requests";
 
 async function getZipFromLatLng(lat, lng) {
   try {
@@ -35,13 +37,14 @@ const SORT_LABELS = {
   score: "Best Match",
   items: "Most Items",
   location: "Closest",
+  completeness: "Most Complete",
 };
 
 const RequestList = () => {
   const {
     getRequestsWithMatches,
-    selectMatch,
     createAndSelectMatch,
+    cancelPendingMatch,
     provideRequestorContact,
   } = useMatch();
 
@@ -49,6 +52,11 @@ const RequestList = () => {
   const [loading, setLoading] = useState(true);
   const [sortMode, setSortMode] = useState("score");
   const [dropdownOpen, setDropdownOpen] = useState(false);
+
+  // Search and filter states
+  const [searchText, setSearchText] = useState("");
+  const [minScore, setMinScore] = useState(0);
+  const [showFilters, setShowFilters] = useState(false);
 
   const [contactModalVisible, setContactModalVisible] = useState(false);
   const [currentMatchId, setCurrentMatchId] = useState(null);
@@ -87,7 +95,8 @@ const RequestList = () => {
   useEffect(() => {
     loadRequests();
 
-    const unsubscribe = database.client.subscribe(
+    // Subscribe to ALL relevant collections for updates
+    const unsubscribeMatches = database.client.subscribe(
       `databases.${ITEMS_DATABASE_ID}.collections.${MATCHES_COLLECTION_ID}.documents`,
       (response) => {
         console.log("Match update detected, reloading...");
@@ -95,43 +104,80 @@ const RequestList = () => {
       }
     );
 
+    const unsubscribeDonations = database.client.subscribe(
+      `databases.${ITEMS_DATABASE_ID}.collections.${DONATIONS_COLLECTION_ID}.documents`,
+      (response) => {
+        console.log("Donation update detected, reloading...");
+        loadRequests();
+      }
+    );
+
+    const unsubscribeRequests = database.client.subscribe(
+      `databases.${ITEMS_DATABASE_ID}.collections.${REQUESTS_COLLECTION_ID}.documents`,
+      (response) => {
+        console.log("Request update detected, reloading...");
+        loadRequests();
+      }
+    );
+
     return () => {
-      unsubscribe();
+      unsubscribeMatches();
+      unsubscribeDonations();
+      unsubscribeRequests();
     };
   }, []);
 
-  const getSortedMatches = (request) => {
-    const matches = request.matches || [];
-    return [...matches]
-      .map((m) => {
-        let zipDiff = null;
-        if (request.zipCode && m.donation?.zipCode) {
-          zipDiff = Math.abs(
-            Number(request.zipCode) - Number(m.donation.zipCode)
-          );
-        }
-        return { ...m, zipDiff };
-      })
-      .sort((a, b) => {
-        if (sortMode === "score") return (b.score || 0) - (a.score || 0);
-        if (sortMode === "items")
-          return (b.items?.length || 0) - (a.items?.length || 0);
-        if (sortMode === "location") {
-          const aHas = typeof a.zipDiff === "number";
-          const bHas = typeof b.zipDiff === "number";
-          if (aHas && bHas) return a.zipDiff - b.zipDiff;
-          if (aHas && !bHas) return -1;
-          if (!aHas && bHas) return 1;
-          return 0;
-        }
-        return 0;
+  const filterAndSortMatches = (request) => {
+    let matches = request.matches || [];
+
+    // Apply search filter
+    if (searchText.trim()) {
+      const search = searchText.toLowerCase();
+      matches = matches.filter((m) => {
+        const donationItems = [...(m.donation?.items || []), ...(m.donation?.other || [])];
+        return donationItems.some(item => item.toLowerCase().includes(search));
       });
+    }
+
+    // Apply score filter
+    if (minScore > 0) {
+      matches = matches.filter((m) => (m.score || 0) >= minScore);
+    }
+
+    // Calculate zip diff for sorting
+    matches = matches.map((m) => {
+      let zipDiff = null;
+      if (request.zipCode && m.donation?.zipCode) {
+        zipDiff = Math.abs(
+          Number(request.zipCode) - Number(m.donation.zipCode)
+        );
+      }
+      return { ...m, zipDiff };
+    });
+
+    // Sort
+    matches.sort((a, b) => {
+      if (sortMode === "score") return (b.score || 0) - (a.score || 0);
+      if (sortMode === "items") return (b.items?.length || 0) - (a.items?.length || 0);
+      if (sortMode === "completeness") return (b.completeness || 0) - (a.completeness || 0);
+      if (sortMode === "location") {
+        const aHas = typeof a.zipDiff === "number";
+        const bHas = typeof b.zipDiff === "number";
+        if (aHas && bHas) return a.zipDiff - b.zipDiff;
+        if (aHas && !bHas) return -1;
+        if (!aHas && bHas) return 1;
+        return 0;
+      }
+      return 0;
+    });
+
+    return matches;
   };
 
   const handleSelectMatch = async (match, request) => {
     Alert.alert(
       "Select this match?",
-      "Once selected, you'll need to wait for the donor to approve. You can only select one match at a time.",
+      "Once selected, you'll wait for the donor to approve. You can only have one pending match at a time.",
       [
         { text: "Cancel", style: "cancel" },
         {
@@ -143,10 +189,8 @@ const RequestList = () => {
                   overlap: match.items,
                   score: match.score,
                 });
-              } else {
-                await selectMatch(match.$id);
               }
-              
+
               Alert.alert(
                 "Match selected!",
                 "Waiting for donor to approve or deny your request."
@@ -154,6 +198,32 @@ const RequestList = () => {
             } catch (err) {
               console.error(err);
               Alert.alert("Error", err.message || "Failed to select match.");
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleCancelPending = async (matchId) => {
+    Alert.alert(
+      "Cancel Pending Match?",
+      "Are you sure you want to cancel this pending match? You'll be able to select a different match.",
+      [
+        { text: "No", style: "cancel" },
+        {
+          text: "Yes, Cancel",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await cancelPendingMatch(matchId);
+              Alert.alert(
+                "Match Cancelled",
+                "You can now select a different match."
+              );
+            } catch (err) {
+              console.error(err);
+              Alert.alert("Error", err.message || "Failed to cancel match.");
             }
           },
         },
@@ -189,6 +259,123 @@ const RequestList = () => {
     }
   };
 
+  const handleDismissMatch = async (matchId) => {
+    Alert.alert(
+      "Complete & Remove Match",
+      "This will permanently delete this request and the matched donation. Both will be removed from the system. Only do this after successfully completing the exchange.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Complete",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              // First get the match to find the donation and request IDs
+              const match = await database.getDocument(
+                ITEMS_DATABASE_ID,
+                MATCHES_COLLECTION_ID,
+                matchId
+              );
+
+              // Delete the match
+              await database.deleteDocument(
+                ITEMS_DATABASE_ID,
+                MATCHES_COLLECTION_ID,
+                matchId
+              );
+
+              // Delete the request
+              await database.deleteDocument(
+                ITEMS_DATABASE_ID,
+                REQUESTS_COLLECTION_ID,
+                match.requestId
+              );
+
+              // Delete the donation
+              await database.deleteDocument(
+                ITEMS_DATABASE_ID,
+                DONATIONS_COLLECTION_ID,
+                match.donationId
+              );
+
+              Alert.alert(
+                "Match Completed!", 
+                "The request and donation have been permanently removed. Thank you for using our service!"
+              );
+              loadRequests();
+            } catch (err) {
+              console.error("Error completing match:", err);
+              Alert.alert("Error", "Failed to complete match.");
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleDeleteRequest = async (requestId) => {
+    Alert.alert(
+      "Delete Request",
+      "Are you sure you want to permanently delete this request? This cannot be undone.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              // Delete any matches associated with this request
+              const matchesRes = await database.listDocuments(
+                ITEMS_DATABASE_ID,
+                MATCHES_COLLECTION_ID,
+                [Query.equal("requestId", requestId), Query.limit(100)]
+              );
+
+              for (const match of matchesRes.documents) {
+                // Set the donation back to active if it was pending
+                try {
+                  await database.updateDocument(
+                    ITEMS_DATABASE_ID,
+                    DONATIONS_COLLECTION_ID,
+                    match.donationId,
+                    { status: "active" }
+                  );
+                } catch (err) {
+                  console.error("Error updating donation:", err);
+                }
+
+                // Delete the match
+                await database.deleteDocument(
+                  ITEMS_DATABASE_ID,
+                  MATCHES_COLLECTION_ID,
+                  match.$id
+                );
+              }
+
+              // Delete the request
+              await database.deleteDocument(
+                ITEMS_DATABASE_ID,
+                REQUESTS_COLLECTION_ID,
+                requestId
+              );
+
+              Alert.alert("Request deleted", "Your request has been permanently removed.");
+              loadRequests();
+            } catch (err) {
+              console.error("Error deleting request:", err);
+              Alert.alert("Error", "Failed to delete request.");
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const clearFilters = () => {
+    setSearchText("");
+    setMinScore(0);
+  };
+
   if (loading) {
     return (
       <ThemedView style={styles.container}>
@@ -205,6 +392,48 @@ const RequestList = () => {
         Request Matches
       </ThemedText>
 
+      {/* Search Bar */}
+      <View style={styles.searchContainer}>
+        <TextInput
+          style={styles.searchInput}
+          placeholder="Search items..."
+          value={searchText}
+          onChangeText={setSearchText}
+          placeholderTextColor="#999"
+        />
+        <TouchableOpacity
+          style={styles.filterButton}
+          onPress={() => setShowFilters(!showFilters)}
+        >
+          <ThemedText style={styles.filterButtonText}>
+            {showFilters ? "Hide" : "Filter"}
+          </ThemedText>
+        </TouchableOpacity>
+      </View>
+
+      {/* Filters */}
+      {showFilters && (
+        <View style={styles.filtersContainer}>
+          <View style={styles.filterRow}>
+            <ThemedText style={styles.filterLabel}>Min Score:</ThemedText>
+            <TextInput
+              style={styles.filterInput}
+              value={minScore.toString()}
+              onChangeText={(val) => {
+                const num = parseInt(val, 10);
+                setMinScore(isNaN(num) ? 0 : num);
+              }}
+              keyboardType="numeric"
+              placeholder="0"
+            />
+          </View>
+          <TouchableOpacity style={styles.clearButton} onPress={clearFilters}>
+            <ThemedText style={styles.clearButtonText}>Clear Filters</ThemedText>
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {/* Sort Dropdown */}
       <View style={styles.dropdownWrapper}>
         <TouchableOpacity
           style={styles.dropdownButton}
@@ -245,13 +474,11 @@ const RequestList = () => {
         )}
 
         {requests.map((request) => {
-          const sortedMatches = getSortedMatches(request);
+          const filteredMatches = filterAndSortMatches(request);
 
-          const pendingMatch = sortedMatches.find((m) => m.status === "pending");
-
-          const approvedMatch = sortedMatches.find((m) => m.status === "approved");
-
-          const availableMatches = sortedMatches.filter(
+          const pendingMatch = filteredMatches.find((m) => m.status === "pending");
+          const approvedMatch = filteredMatches.find((m) => m.status === "approved");
+          const availableMatches = filteredMatches.filter(
             (m) => !m.status || m._isTemporary
           );
 
@@ -267,6 +494,18 @@ const RequestList = () => {
               <ThemedText style={styles.subtle}>
                 Requested Zip: {request.zipCode || "Location not provided"}
               </ThemedText>
+
+              {/* Delete button for active requests without matches */}
+              {!pendingMatch && !approvedMatch && (
+                <TouchableOpacity
+                  style={styles.deleteRequestButton}
+                  onPress={() => handleDeleteRequest(request.$id)}
+                >
+                  <ThemedText style={styles.deleteRequestText}>
+                    🗑️ Delete This Request
+                  </ThemedText>
+                </TouchableOpacity>
+              )}
 
               <Spacer height={10} />
 
@@ -291,26 +530,44 @@ const RequestList = () => {
                   </TouchableOpacity>
                 </View>
               ) : approvedMatch && approvedMatch.requestorPhone ? (
-                <View style={styles.matchCard}>
-                  <ThemedText style={styles.completeTitle}>
-                    ✓ Match Complete!
-                  </ThemedText>
-                  <ThemedText style={styles.sectionTitle}>
-                    Donor Contact:
-                  </ThemedText>
-                  <ThemedText>
-                    Email: {approvedMatch.donorEmail || "N/A"}
-                  </ThemedText>
-                  <ThemedText>
-                    Phone: {approvedMatch.donorPhone || "N/A"}
-                  </ThemedText>
+                <View style={styles.contactCard}>
+                  <View style={styles.contactHeader}>
+                    <ThemedText style={styles.completeTitle}>
+                      Match Complete!
+                    </ThemedText>
+                    <TouchableOpacity
+                      style={styles.dismissButton}
+                      onPress={() => handleDismissMatch(approvedMatch.$id)}
+                    >
+                      <ThemedText style={styles.dismissButtonText}>✕</ThemedText>
+                    </TouchableOpacity>
+                  </View>
+                  
+                  <View style={styles.contactInfoBox}>
+                    <ThemedText style={styles.sectionTitle}>
+                      Donor Contact Information:
+                    </ThemedText>
+                    <ThemedText style={styles.contactDetail}>
+                      📧 {approvedMatch.donorEmail || "Not provided"}
+                    </ThemedText>
+                    <ThemedText style={styles.contactDetail}>
+                      📱 {approvedMatch.donorPhone || "Not provided"}
+                    </ThemedText>
+                  </View>
+
                   <Spacer height={8} />
-                  <ThemedText style={styles.subtle}>
-                    Donation Items:{" "}
-                    {approvedMatch.donation?.items?.join(", ") || "N/A"}
-                  </ThemedText>
-                  <ThemedText style={styles.infoText}>
-                    Please coordinate with the donor to arrange pickup/delivery.
+                  
+                  <View style={styles.matchDetailsBox}>
+                    <ThemedText style={styles.matchDetailLabel}>
+                      Matched Items:
+                    </ThemedText>
+                    <ThemedText style={styles.matchDetailText}>
+                      {approvedMatch.items?.join(", ") || "N/A"}
+                    </ThemedText>
+                  </View>
+                  
+                  <ThemedText style={styles.instructionText}>
+                    Contact the donor to arrange pickup/delivery. Tap the ✕ to dismiss this match once completed.
                   </ThemedText>
                 </View>
               ) : pendingMatch ? (
@@ -330,6 +587,23 @@ const RequestList = () => {
                   <ThemedText style={styles.subtle}>
                     Match Score: {pendingMatch.score || 0}
                   </ThemedText>
+
+                  <TouchableOpacity
+                    style={[styles.selectButton, { 
+                      marginTop: 10, 
+                      backgroundColor: "#FF6B6B",
+                      borderColor: "#FF6B6B" 
+                    }]}
+                    onPress={() => handleCancelPending(pendingMatch.$id)}
+                  >
+                    <ThemedText style={{ color: "white", fontWeight: "bold" }}>
+                      Cancel Pending Match
+                    </ThemedText>
+                  </TouchableOpacity>
+                  
+                  <ThemedText style={styles.cancelHint}>
+                    Taking too long? You can cancel and try a different match.
+                  </ThemedText>
                 </View>
               ) : availableMatches.length > 0 ? (
                 <>
@@ -345,6 +619,7 @@ const RequestList = () => {
                       </ThemedText>
                       <ThemedText>
                         Score: {m.score || 0} | Items: {m.items?.length || 0}
+                        {m.completeness !== undefined && ` | ${(m.completeness * 100).toFixed(0)}% match`}
                       </ThemedText>
                       <ThemedText style={styles.itemsList}>
                         Available: {m.donation?.items?.join(", ") || "N/A"}
@@ -353,6 +628,11 @@ const RequestList = () => {
                         Donation Zip:{" "}
                         {m.donation?.zipCode || "Location not provided"}
                       </ThemedText>
+                      {m.quantitySufficient === false && (
+                        <ThemedText style={styles.warningText}>
+                          Note: May not have full quantity needed
+                        </ThemedText>
+                      )}
 
                       <TouchableOpacity
                         style={[styles.selectButton, { marginTop: 8 }]}
@@ -451,6 +731,68 @@ export default RequestList;
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 15 },
   heading: { fontSize: 20, fontWeight: "bold", textAlign: "center" },
+  searchContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 10,
+    gap: 8,
+  },
+  searchInput: {
+    flex: 1,
+    backgroundColor: "white",
+    borderRadius: 20,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderWidth: 1,
+    borderColor: "#ccc",
+    color: "#000",
+  },
+  filterButton: {
+    backgroundColor: "#4A90E2",
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+  },
+  filterButtonText: {
+    color: "white",
+    fontWeight: "bold",
+  },
+  filtersContainer: {
+    backgroundColor: "#f5f5f5",
+    padding: 12,
+    borderRadius: 12,
+    marginBottom: 10,
+  },
+  filterRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 8,
+  },
+  filterLabel: {
+    fontSize: 14,
+    marginRight: 10,
+    width: 80,
+  },
+  filterInput: {
+    flex: 1,
+    backgroundColor: "white",
+    borderRadius: 8,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderWidth: 1,
+    borderColor: "#ccc",
+    color: "#000",
+  },
+  clearButton: {
+    backgroundColor: "#FF6B6B",
+    padding: 8,
+    borderRadius: 8,
+    alignItems: "center",
+  },
+  clearButtonText: {
+    color: "white",
+    fontWeight: "bold",
+  },
   dropdownWrapper: { alignItems: "center", marginBottom: 10, zIndex: 1000 },
   dropdownButton: {
     paddingVertical: 8,
@@ -508,6 +850,76 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: "#2196F3",
   },
+  contactCard: {
+    backgroundColor: "#E8F5E9",
+    padding: 16,
+    borderRadius: 12,
+    marginTop: 8,
+    borderWidth: 2,
+    borderColor: "#4CAF50",
+  },
+  contactHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  dismissButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "#FF6B6B",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  dismissButtonText: {
+    color: "white",
+    fontSize: 20,
+    fontWeight: "bold",
+  },
+  contactInfoBox: {
+    backgroundColor: "white",
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 8,
+  },
+  contactDetail: {
+    fontSize: 15,
+    color: "#333",
+    marginTop: 6,
+    fontWeight: "500",
+  },
+  matchDetailsBox: {
+    backgroundColor: "#F5F5F5",
+    padding: 10,
+    borderRadius: 8,
+    marginBottom: 8,
+  },
+  matchDetailLabel: {
+    fontSize: 13,
+    fontWeight: "bold",
+    color: "#666",
+    marginBottom: 4,
+  },
+  matchDetailText: {
+    fontSize: 14,
+    color: "#333",
+  },
+  deleteRequestButton: {
+    backgroundColor: "#FFF3E0",
+    borderWidth: 1,
+    borderColor: "#FF9800",
+    borderRadius: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    marginTop: 12,
+    alignItems: "center",
+  },
+  deleteRequestText: {
+    color: "#E65100",
+    fontWeight: "600",
+    fontSize: 14,
+  },
   pendingTitle: {
     fontWeight: "bold",
     fontSize: 16,
@@ -522,6 +934,19 @@ const styles = StyleSheet.create({
   infoText: {
     fontSize: 13,
     color: "#555",
+    marginTop: 4,
+    fontStyle: "italic",
+  },
+  cancelHint: {
+    fontSize: 12,
+    color: "#666",
+    marginTop: 6,
+    textAlign: "center",
+    fontStyle: "italic",
+  },
+  warningText: {
+    fontSize: 12,
+    color: "#FF9800",
     marginTop: 4,
     fontStyle: "italic",
   },

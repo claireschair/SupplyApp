@@ -10,14 +10,32 @@ const DONATIONS_COLLECTION_ID = "donations";
 const REQUESTS_COLLECTION_ID = "requests";
 const MATCHES_COLLECTION_ID = "matches";
 
+// Configuration
+const MATCH_TIMEOUT_HOURS = 48;
+const EXPIRATION_DAYS = 30;
+const MIN_MATCH_SCORE = 1;
+const MAX_DISTANCE_KM = 50;
+const ALLOW_SELF_MATCHING = true; // Set to false in production
+
+// Helper function to normalize items
 function normalizeItems(items = [], other = []) {
   return [...items, ...other]
     .map((i) => String(i).trim().toLowerCase())
     .filter(Boolean);
 }
 
+// Helper to get quantity for an item
+function getQuantity(itemsList, quantitiesList, itemName) {
+  const index = itemsList.findIndex(
+    (item) => item.toLowerCase() === itemName.toLowerCase()
+  );
+  if (index === -1) return 1;
+  return quantitiesList && quantitiesList[index] ? quantitiesList[index] : 1;
+}
+
+// Haversine distance calculation
 function haversineDistance(lat1, lon1, lat2, lon2) {
-  const R = 6371; 
+  const R = 6371;
   const toRad = (d) => (d * Math.PI) / 180;
 
   const dLat = toRad(lat2 - lat1);
@@ -32,22 +50,55 @@ function haversineDistance(lat1, lon1, lat2, lon2) {
   return 2 * R * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
+// Calculate match score between a donation and request
 function calculateMatchScore(donation, request) {
   const donationItems = normalizeItems(donation.items, donation.other);
   const requestItems = normalizeItems(request.items, request.other);
 
-  console.log("Comparing:", {
-    donationItems,
-    requestItems,
-  });
-
   const overlap = donationItems.filter((item) => requestItems.includes(item));
   
-  console.log("Overlap found:", overlap);
-  
-  if (overlap.length === 0) return null; 
+  if (overlap.length === 0) return null;
 
   let score = overlap.length;
+
+  const requestedCount = requestItems.length;
+  const matchedCount = overlap.length;
+  const completeness = matchedCount / requestedCount;
+  
+  if (completeness === 1.0) {
+    score += 5;
+  } else if (completeness >= 0.75) {
+    score += 3;
+  } else if (completeness >= 0.5) {
+    score += 2;
+  } else if (completeness >= 0.25) {
+    score += 1;
+  }
+
+  let quantitySufficient = true;
+  if (donation.itemQuantities && request.itemQuantities) {
+    for (const item of overlap) {
+      const donationQty = getQuantity(
+        [...donation.items, ...donation.other],
+        donation.itemQuantities,
+        item
+      );
+      const requestQty = getQuantity(
+        [...request.items, ...request.other],
+        request.itemQuantities,
+        item
+      );
+      
+      if (donationQty < requestQty) {
+        quantitySufficient = false;
+        break;
+      }
+    }
+    
+    if (quantitySufficient) {
+      score += 2;
+    }
+  }
 
   if (donation.zipCode && request.zipCode) {
     const diff = Math.abs(
@@ -71,6 +122,10 @@ function calculateMatchScore(donation, request) {
       request.lng
     );
 
+    if (distance > MAX_DISTANCE_KM) {
+      return null;
+    }
+
     if (distance <= 5) score += 3;
     else if (distance <= 15) score += 2;
     else if (distance <= 30) score += 1;
@@ -79,7 +134,20 @@ function calculateMatchScore(donation, request) {
   return {
     score: Number(score.toFixed(2)),
     overlap,
+    completeness,
+    quantitySufficient,
   };
+}
+
+function isExpired(document) {
+  if (!document.expiresAt) return false;
+  return new Date(document.expiresAt) < new Date();
+}
+
+function hasTimedOut(match) {
+  if (!match.pendingSince || match.status !== "pending") return false;
+  const timeoutMs = MATCH_TIMEOUT_HOURS * 60 * 60 * 1000;
+  return new Date() - new Date(match.pendingSince) > timeoutMs;
 }
 
 export function MatchProvider({ children }) {
@@ -87,155 +155,274 @@ export function MatchProvider({ children }) {
 
   const userId = user?.$id ?? null;
 
-  async function saveDonation(items, other = [], locationData = {}) {
-    console.log("saveDonation called:", { items, other, locationData, userId });
-    
-    if (!userId) {
-      console.error("No userId - user not logged in");
-      return null;
-    }
+  async function saveDonation(items, other = [], locationData = {}, quantitiesObject = {}) {
+    if (!userId) return null;
 
     const { zipCode = null, lat = null, lng = null } = locationData;
     
-    try {
-      const result = await database.createDocument(
-        ITEMS_DATABASE_ID,
-        DONATIONS_COLLECTION_ID,
-        ID.unique(),
-        {
-          userId,
-          items,
-          other,
-          zipCode,
-          lat,
-          lng,
-          status: "active",
-        }
-      );
-      
-      console.log("Donation saved successfully:", result);
-      return result;
-    } catch (err) {
-      console.error("Error saving donation:", err);
-      throw err;
-    }
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + EXPIRATION_DAYS);
+    
+    const allItems = [...items, ...other];
+    const itemQuantities = allItems.map(item => quantitiesObject[item] || 1);
+    
+    return database.createDocument(
+      ITEMS_DATABASE_ID,
+      DONATIONS_COLLECTION_ID,
+      ID.unique(),
+      {
+        userId,
+        items,
+        other,
+        itemQuantities,
+        zipCode,
+        lat,
+        lng,
+        status: "active",
+        createdAt: new Date().toISOString(),
+        expiresAt: expiresAt.toISOString(),
+      }
+    );
   }
 
-  async function saveRequest(items, other = [], locationData = {}) {
-    console.log("saveRequest called:", { items, other, locationData, userId });
-    
-    if (!userId) {
-      console.error("No userId - user not logged in");
-      return null;
-    }
+  async function saveRequest(items, other = [], locationData = {}, quantitiesObject = {}) {
+    if (!userId) return null;
 
     const { zipCode = null, lat = null, lng = null } = locationData;
     
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + EXPIRATION_DAYS);
+    
+    const allItems = [...items, ...other];
+    const itemQuantities = allItems.map(item => quantitiesObject[item] || 1);
+    
+    return database.createDocument(
+      ITEMS_DATABASE_ID,
+      REQUESTS_COLLECTION_ID,
+      ID.unique(),
+      {
+        userId,
+        items,
+        other,
+        itemQuantities,
+        zipCode,
+        lat,
+        lng,
+        status: "active",
+        createdAt: new Date().toISOString(),
+        expiresAt: expiresAt.toISOString(),
+      }
+    );
+  }
+
+  async function cleanupExpiredAndTimedOut() {
     try {
-      const result = await database.createDocument(
+      const expiredDonations = await database.listDocuments(
+        ITEMS_DATABASE_ID,
+        DONATIONS_COLLECTION_ID,
+        [
+          Query.lessThan("expiresAt", new Date().toISOString()),
+          Query.or([
+            Query.equal("status", "active"),
+            Query.equal("status", "pending")
+          ]),
+          Query.limit(100)
+        ]
+      );
+
+      for (const doc of expiredDonations.documents) {
+        await database.updateDocument(
+          ITEMS_DATABASE_ID,
+          DONATIONS_COLLECTION_ID,
+          doc.$id,
+          { status: "expired" }
+        );
+      }
+
+      const expiredRequests = await database.listDocuments(
         ITEMS_DATABASE_ID,
         REQUESTS_COLLECTION_ID,
-        ID.unique(),
-        {
-          userId,
-          items,
-          other,
-          zipCode,
-          lat,
-          lng,
-          status: "active",
-        }
+        [
+          Query.lessThan("expiresAt", new Date().toISOString()),
+          Query.or([
+            Query.equal("status", "active"),
+            Query.equal("status", "pending")
+          ]),
+          Query.limit(100)
+        ]
       );
-      
-      console.log("Request saved successfully:", result);
-      return result;
+
+      for (const doc of expiredRequests.documents) {
+        await database.updateDocument(
+          ITEMS_DATABASE_ID,
+          REQUESTS_COLLECTION_ID,
+          doc.$id,
+          { status: "expired" }
+        );
+      }
+
+      const pendingMatches = await database.listDocuments(
+        ITEMS_DATABASE_ID,
+        MATCHES_COLLECTION_ID,
+        [
+          Query.equal("status", "pending"),
+          Query.limit(100)
+        ]
+      );
+
+      const timeoutDate = new Date();
+      timeoutDate.setHours(timeoutDate.getHours() - MATCH_TIMEOUT_HOURS);
+
+      for (const match of pendingMatches.documents) {
+        if (match.pendingSince && new Date(match.pendingSince) < timeoutDate) {
+          await database.updateDocument(
+            ITEMS_DATABASE_ID,
+            DONATIONS_COLLECTION_ID,
+            match.donationId,
+            { status: "active" }
+          );
+          
+          await database.updateDocument(
+            ITEMS_DATABASE_ID,
+            REQUESTS_COLLECTION_ID,
+            match.requestId,
+            { status: "active" }
+          );
+          
+          await database.deleteDocument(
+            ITEMS_DATABASE_ID,
+            MATCHES_COLLECTION_ID,
+            match.$id
+          );
+        }
+      }
     } catch (err) {
-      console.error("Error saving request:", err);
-      throw err;
+      console.error("Error in cleanup:", err);
     }
   }
 
   async function getRequestsWithMatches() {
-    console.log("getRequestsWithMatches called for userId:", userId);
-    
-    if (!userId) {
-      console.error("No userId");
-      return [];
-    }
+    if (!userId) return [];
     
     try {
+      await cleanupExpiredAndTimedOut();
+
+      // Get user's requests with status "active", "pending", OR "matched"
       const requestRes = await database.listDocuments(
         ITEMS_DATABASE_ID,
         REQUESTS_COLLECTION_ID,
-        [Query.equal("userId", userId), Query.equal("status", "active")]
+        [
+          Query.equal("userId", userId),
+          Query.or([
+            Query.equal("status", "active"),
+            Query.equal("status", "pending"),
+            Query.equal("status", "matched")
+          ]),
+          Query.limit(100)
+        ]
       );
 
-      console.log("User's requests:", requestRes.documents.length);
+      const donationQueries = [
+        Query.equal("status", "active"),
+        Query.limit(100),
+      ];
+      
+      if (!ALLOW_SELF_MATCHING) {
+        donationQueries.push(Query.notEqual("userId", userId));
+      }
 
       const donationRes = await database.listDocuments(
         ITEMS_DATABASE_ID,
         DONATIONS_COLLECTION_ID,
-        [
-          Query.equal("status", "active"),
-          Query.limit(100),
-        ]
+        donationQueries
       );
-
-      console.log("Available donations:", donationRes.documents.length);
-      console.log("Donations:", donationRes.documents.map(d => ({
-        id: d.$id,
-        userId: d.userId,
-        items: d.items,
-        status: d.status
-      })));
 
       const enriched = [];
 
       for (const request of requestRes.documents) {
-        console.log("Processing request:", request.$id);
-        
+        if (isExpired(request)) continue;
+
         const existingMatchesRes = await database.listDocuments(
           ITEMS_DATABASE_ID,
           MATCHES_COLLECTION_ID,
-          [Query.equal("requestId", request.$id)]
+          [Query.equal("requestId", request.$id), Query.limit(100)]
         );
 
-        const existingMatches = new Map();
-        for (const match of existingMatchesRes.documents) {
-          existingMatches.set(match.donationId, match);
-        }
-
-        console.log("Existing matches for request:", existingMatches.size);
-
         const matches = [];
+        let pendingMatch = null;
 
-        for (const donation of donationRes.documents) {
-          const existingMatch = existingMatches.get(donation.$id);
-          if (existingMatch) {
-            console.log("Using existing match:", existingMatch.$id);
+        // First, load all existing matches (pending/approved) with their donation details
+        for (const match of existingMatchesRes.documents) {
+          if (hasTimedOut(match)) {
             try {
-              matches.push({
-                ...existingMatch,
-                donation,
-                donorEmail: existingMatch.donorEmail || null,
-                donorPhone: existingMatch.donorPhone || null,
-                requestorEmail: existingMatch.requestorEmail || null,
-                requestorPhone: existingMatch.requestorPhone || null,
-              });
+              await database.updateDocument(
+                ITEMS_DATABASE_ID,
+                DONATIONS_COLLECTION_ID,
+                match.donationId,
+                { status: "active" }
+              );
+              await database.updateDocument(
+                ITEMS_DATABASE_ID,
+                REQUESTS_COLLECTION_ID,
+                match.requestId,
+                { status: "active" }
+              );
+              await database.deleteDocument(
+                ITEMS_DATABASE_ID,
+                MATCHES_COLLECTION_ID,
+                match.$id
+              );
             } catch (err) {
-              console.error("Error loading existing match:", err);
+              console.error("Error cleaning up timed out match:", err);
             }
             continue;
           }
 
-          const matchResult = calculateMatchScore(donation, request);
-          if (!matchResult) continue;
+          // Load the donation for this match
+          try {
+            const donation = await database.getDocument(
+              ITEMS_DATABASE_ID,
+              DONATIONS_COLLECTION_ID,
+              match.donationId
+            );
 
-          console.log("Potential match found:", {
-            donationId: donation.$id,
-            score: matchResult.score,
-            overlap: matchResult.overlap,
-          });
+            if (!isExpired(donation)) {
+              matches.push({
+                ...match,
+                donation,
+                donorEmail: match.donorEmail || null,
+                donorPhone: match.donorPhone || null,
+                requestorEmail: match.requestorEmail || null,
+                requestorPhone: match.requestorPhone || null,
+              });
+
+              if (match.status === "pending") {
+                pendingMatch = match;
+              }
+            }
+          } catch (err) {
+            console.error("Error loading donation for existing match:", err);
+          }
+        }
+
+        // Then, add potential new matches ONLY if no pending match exists
+        for (const donation of donationRes.documents) {
+          if (isExpired(donation)) continue;
+
+          // Skip if we already have a match with this donation
+          if (matches.some(m => m.donationId === donation.$id)) {
+            continue;
+          }
+
+          if (pendingMatch) {
+            continue;
+          }
+
+          const matchResult = calculateMatchScore(donation, request);
+          
+          if (!matchResult || matchResult.score < MIN_MATCH_SCORE) {
+            continue;
+          }
 
           matches.push({
             $id: `temp-${donation.$id}`,
@@ -243,6 +430,8 @@ export function MatchProvider({ children }) {
             requestId: request.$id,
             items: matchResult.overlap,
             score: matchResult.score,
+            completeness: matchResult.completeness,
+            quantitySufficient: matchResult.quantitySufficient,
             status: null,
             donation,
             donorEmail: null,
@@ -255,125 +444,132 @@ export function MatchProvider({ children }) {
 
         matches.sort((a, b) => (b.score || 0) - (a.score || 0));
 
-        console.log("Total matches for request:", matches.length);
-
-        enriched.push({ ...request, matches: matches.slice(0, 10) });
+        enriched.push({ 
+          ...request, 
+          matches: matches.slice(0, 10),
+          hasPendingMatch: !!pendingMatch 
+        });
       }
 
-      console.log("Returning enriched requests:", enriched.length);
       return enriched;
     } catch (err) {
       console.error("Error in getRequestsWithMatches:", err);
-      return [];
+      throw err;
     }
   }
 
   async function getDonationsWithMatches() {
     if (!userId) return [];
     
-    const donationRes = await database.listDocuments(
-      ITEMS_DATABASE_ID,
-      DONATIONS_COLLECTION_ID,
-      [Query.equal("userId", userId), Query.equal("status", "active")]
-    );
+    try {
+      await cleanupExpiredAndTimedOut();
 
-    const enriched = [];
-
-    for (const donation of donationRes.documents) {
-      const matchRes = await database.listDocuments(
+      // Get donations with status "active", "pending", OR "matched" so they show until dismissed
+      const donationRes = await database.listDocuments(
         ITEMS_DATABASE_ID,
-        MATCHES_COLLECTION_ID,
+        DONATIONS_COLLECTION_ID,
         [
-          Query.equal("donationId", donation.$id),
-          Query.orderDesc("score"),
-          Query.limit(10),
+          Query.equal("userId", userId),
+          Query.or([
+            Query.equal("status", "active"),
+            Query.equal("status", "pending"),
+            Query.equal("status", "matched")
+          ]),
+          Query.limit(100)
         ]
       );
 
-      const matches = [];
-      for (const match of matchRes.documents) {
-        try {
-          const request = await database.getDocument(
-            ITEMS_DATABASE_ID,
-            REQUESTS_COLLECTION_ID,
-            match.requestId
-          );
+      const enriched = [];
 
-          if (request.status !== "active") continue;
+      for (const donation of donationRes.documents) {
+        if (isExpired(donation)) continue;
 
-          matches.push({
-            ...match,
-            request,
-            donorEmail: match.donorEmail || null,
-            donorPhone: match.donorPhone || null,
-            requestorEmail: match.requestorEmail || null,
-            requestorPhone: match.requestorPhone || null,
-          });
-        } catch {}
+        const matchRes = await database.listDocuments(
+          ITEMS_DATABASE_ID,
+          MATCHES_COLLECTION_ID,
+          [
+            Query.equal("donationId", donation.$id),
+            Query.orderDesc("score"),
+            Query.limit(10),
+          ]
+        );
+
+        const matches = [];
+        for (const match of matchRes.documents) {
+          if (hasTimedOut(match)) {
+            try {
+              await database.deleteDocument(
+                ITEMS_DATABASE_ID,
+                MATCHES_COLLECTION_ID,
+                match.$id
+              );
+            } catch (err) {
+              console.error("Error cleaning up timed out match:", err);
+            }
+            continue;
+          }
+
+          try {
+            const request = await database.getDocument(
+              ITEMS_DATABASE_ID,
+              REQUESTS_COLLECTION_ID,
+              match.requestId
+            );
+
+            // Skip requests that aren't active OR pending (for this donation)
+            // This handles both expired and already matched requests
+            if (isExpired(request)) continue;
+
+            matches.push({
+              ...match,
+              request,
+              donorEmail: match.donorEmail || null,
+              donorPhone: match.donorPhone || null,
+              requestorEmail: match.requestorEmail || null,
+              requestorPhone: match.requestorPhone || null,
+            });
+          } catch (err) {
+            console.error("Error loading request for match:", err);
+          }
+        }
+
+        enriched.push({ ...donation, matches });
       }
 
-      enriched.push({ ...donation, matches });
+      return enriched;
+    } catch (err) {
+      console.error("Error in getDonationsWithMatches:", err);
+      throw err;
     }
-
-    return enriched;
-  }
-
-  async function selectMatch(matchId) {
-    if (!userId) return null;
-
-    if (matchId.startsWith("temp-")) {
-      throw new Error(
-        "Please pass the full match object to selectMatch for temporary matches"
-      );
-    }
-
-    const match = await database.getDocument(
-      ITEMS_DATABASE_ID,
-      MATCHES_COLLECTION_ID,
-      matchId
-    );
-
-    const existingPendingMatches = await database.listDocuments(
-      ITEMS_DATABASE_ID,
-      MATCHES_COLLECTION_ID,
-      [Query.equal("requestId", match.requestId), Query.equal("status", "pending")]
-    );
-
-    if (existingPendingMatches.documents.length > 0) {
-      throw new Error(
-        "You already have a pending match for this request. Please wait for donor response."
-      );
-    }
-
-    await database.updateDocument(
-      ITEMS_DATABASE_ID,
-      DONATIONS_COLLECTION_ID,
-      match.donationId,
-      { status: "pending" }
-    );
-
-    return await database.updateDocument(
-      ITEMS_DATABASE_ID,
-      MATCHES_COLLECTION_ID,
-      matchId,
-      { status: "pending" }
-    );
   }
 
   async function createAndSelectMatch(donation, request, matchData) {
-    console.log("createAndSelectMatch called:", { donation: donation.$id, request: request.$id });
-    
     if (!userId) return null;
+
+    const currentDonation = await database.getDocument(
+      ITEMS_DATABASE_ID,
+      DONATIONS_COLLECTION_ID,
+      donation.$id
+    );
+
+    if (currentDonation.status !== "active") {
+      throw new Error(
+        "This donation was just selected by someone else. Please try a different match."
+      );
+    }
 
     const existingPendingMatches = await database.listDocuments(
       ITEMS_DATABASE_ID,
       MATCHES_COLLECTION_ID,
-      [Query.equal("requestId", request.$id), Query.equal("status", "pending")]
+      [
+        Query.equal("requestId", request.$id),
+        Query.equal("status", "pending")
+      ]
     );
 
     if (existingPendingMatches.documents.length > 0) {
       throw new Error(
-        "You already have a pending match for this request. Please wait for donor response."
+        "This request already has a pending match. Please wait for donor response or cancel the pending match."
       );
     }
 
@@ -387,19 +583,82 @@ export function MatchProvider({ children }) {
         items: matchData.overlap,
         score: matchData.score,
         status: "pending",
+        pendingSince: new Date().toISOString(),
       }
     );
 
-    console.log("Match created:", newMatch.$id);
+    try {
+      await database.updateDocument(
+        ITEMS_DATABASE_ID,
+        DONATIONS_COLLECTION_ID,
+        donation.$id,
+        { status: "pending" }
+      );
+      
+      await database.updateDocument(
+        ITEMS_DATABASE_ID,
+        REQUESTS_COLLECTION_ID,
+        request.$id,
+        { status: "pending" }
+      );
+    } catch (err) {
+      await database.deleteDocument(
+        ITEMS_DATABASE_ID,
+        MATCHES_COLLECTION_ID,
+        newMatch.$id
+      );
+      throw new Error(
+        "Failed to secure this donation. It may have been selected by someone else. Please try again."
+      );
+    }
+
+    return newMatch;
+  }
+
+  async function cancelPendingMatch(matchId) {
+    if (!userId) return null;
+
+    const match = await database.getDocument(
+      ITEMS_DATABASE_ID,
+      MATCHES_COLLECTION_ID,
+      matchId
+    );
+
+    if (match.status !== "pending") {
+      throw new Error("This match is not pending.");
+    }
+
+    const request = await database.getDocument(
+      ITEMS_DATABASE_ID,
+      REQUESTS_COLLECTION_ID,
+      match.requestId
+    );
+
+    if (request.userId !== userId) {
+      throw new Error("You can only cancel your own pending matches.");
+    }
 
     await database.updateDocument(
       ITEMS_DATABASE_ID,
       DONATIONS_COLLECTION_ID,
-      donation.$id,
-      { status: "pending" }
+      match.donationId,
+      { status: "active" }
+    );
+    
+    await database.updateDocument(
+      ITEMS_DATABASE_ID,
+      REQUESTS_COLLECTION_ID,
+      match.requestId,
+      { status: "active" }
     );
 
-    return newMatch;
+    await database.deleteDocument(
+      ITEMS_DATABASE_ID,
+      MATCHES_COLLECTION_ID,
+      matchId
+    );
+
+    return true;
   }
 
   async function approveDonation(matchId, donorContactInfo) {
@@ -444,6 +703,13 @@ export function MatchProvider({ children }) {
       ITEMS_DATABASE_ID,
       DONATIONS_COLLECTION_ID,
       match.donationId,
+      { status: "active" }
+    );
+    
+    await database.updateDocument(
+      ITEMS_DATABASE_ID,
+      REQUESTS_COLLECTION_ID,
+      match.requestId,
       { status: "active" }
     );
 
@@ -499,6 +765,7 @@ export function MatchProvider({ children }) {
           Query.equal("donationId", match.donationId),
           Query.equal("requestId", match.requestId),
         ]),
+        Query.limit(100)
       ]
     );
 
@@ -522,11 +789,12 @@ export function MatchProvider({ children }) {
         saveRequest,
         getRequestsWithMatches,
         getDonationsWithMatches,
-        selectMatch,
         createAndSelectMatch,
+        cancelPendingMatch,
         approveDonation,
         denyDonation,
         provideRequestorContact,
+        cleanupExpiredAndTimedOut,
       }}
     >
       {children}

@@ -10,6 +10,7 @@ import { useMatch } from "../../../hooks/useMatch";
 
 const ReceiveForm = () => {
   const [selectedItems, setSelectedItems] = useState([]);
+  const [quantities, setQuantities] = useState({});
   const [otherItems, setOtherItems] = useState([]);
   const [otherInput, setOtherInput] = useState("");
   const [selectionMethod, setSelectionMethod] = useState(null);
@@ -32,21 +33,35 @@ const ReceiveForm = () => {
   ];
 
   const toggleItem = (item) => {
-    setSelectedItems((prev) =>
-      prev.includes(item)
-        ? prev.filter((i) => i !== item)
-        : [...prev, item]
-    );
+    setSelectedItems((prev) => {
+      if (prev.includes(item)) {
+        const newQuantities = { ...quantities };
+        delete newQuantities[item];
+        setQuantities(newQuantities);
+        return prev.filter((i) => i !== item);
+      } else {
+        return [...prev, item];
+      }
+    });
+  };
+
+  const updateQuantity = (item, value) => {
+    setQuantities({ ...quantities, [item]: value });
   };
 
   const handleAddOtherItem = () => {
     if (otherInput.trim()) {
-      setOtherItems([...otherItems, otherInput.trim()]);
+      const newItem = otherInput.trim();
+      setOtherItems([...otherItems, newItem]);
       setOtherInput("");
     }
   };
 
   const handleRemoveOtherItem = (index) => {
+    const item = otherItems[index];
+    const newQuantities = { ...quantities };
+    delete newQuantities[item];
+    setQuantities(newQuantities);
     setOtherItems(otherItems.filter((_, i) => i !== index));
   };
 
@@ -104,14 +119,26 @@ const ReceiveForm = () => {
       }
     }
 
+    const finalQuantities = {};
+    [...selectedItems, ...otherItems].forEach(item => {
+      const qty = parseInt(quantities[item], 10);
+      finalQuantities[item] = (isNaN(qty) || qty < 1) ? 1 : qty;
+    });
+
     try {
-      await saveRequest(selectedItems, otherItems, {
-        zipCode: selectionMethod === "zip" ? zipInt : null,
-        lat: selectionMethod === "location" ? location.latitude : null,
-        lng: selectionMethod === "location" ? location.longitude : null,
-      });
+      await saveRequest(
+        selectedItems,
+        otherItems,
+        {
+          zipCode: selectionMethod === "zip" ? zipInt : null,
+          lat: selectionMethod === "location" ? location.latitude : null,
+          lng: selectionMethod === "location" ? location.longitude : null,
+        },
+        finalQuantities
+      );
 
       setSelectedItems([]);
+      setQuantities({});
       setOtherItems([]);
       setOtherInput("");
       setZipCode("");
@@ -151,55 +178,85 @@ const ReceiveForm = () => {
           <ThemedText>Select Supplies Needed:</ThemedText>
           <Spacer height={10} />
 
-         <View style={styles.supplyContainer}>
-           <View style={styles.column}>
-             {supplyOptions.slice(0, 4).map((item) => (
-               <TouchableOpacity
-                 key={item}
-                 onPress={() => toggleItem(item)}
-                 style={[
-                   styles.itemButton,
-                   selectedItems.includes(item) && styles.itemSelected,
-                 ]}
-               >
-                 <ThemedText
-                   style={
-                     selectedItems.includes(item)
-                       ? styles.itemTextSelected
-                       : styles.itemText
-                   }
-                 >
-                   {item}
-                 </ThemedText>
-               </TouchableOpacity>
-             ))}
-           </View>
+          <View style={styles.supplyContainer}>
+            <View style={styles.column}>
+              {supplyOptions.slice(0, 4).map((item) => (
+                <View key={item}>
+                  <TouchableOpacity
+                    onPress={() => toggleItem(item)}
+                    style={[
+                      styles.itemButton,
+                      selectedItems.includes(item) && styles.itemSelected,
+                    ]}
+                  >
+                    <ThemedText
+                      style={
+                        selectedItems.includes(item)
+                          ? styles.itemTextSelected
+                          : styles.itemText
+                      }
+                    >
+                      {item}
+                    </ThemedText>
+                  </TouchableOpacity>
+                  {selectedItems.includes(item) && (
+                    <View style={styles.quantityContainer}>
+                      <ThemedText style={styles.quantityLabel}>Qty:</ThemedText>
+                      <TextInput
+                        style={styles.quantityInput}
+                        value={quantities[item] || ""}
+                        onChangeText={(val) => updateQuantity(item, val)}
+                        keyboardType="numeric"
+                        placeholder="1"
+                        selectTextOnFocus={true}
+                        placeholderTextColor="#999"
+                      />
+                    </View>
+                  )}
+                </View>
+              ))}
+            </View>
 
-           <View style={styles.column}>
-             {supplyOptions.slice(4).map((item) => (
-               <TouchableOpacity
-                 key={item}
-                 onPress={() => toggleItem(item)}
-                 style={[
-                   styles.itemButton,
-                   selectedItems.includes(item) && styles.itemSelected,
-                 ]}
-               >
-                 <ThemedText
-                   style={
-                     selectedItems.includes(item)
-                       ? styles.itemTextSelected
-                       : styles.itemText
-                   }
-                 >
-                   {item}
-                 </ThemedText>
-               </TouchableOpacity>
-             ))}
-           </View>
-         </View>
+            <View style={styles.column}>
+              {supplyOptions.slice(4).map((item) => (
+                <View key={item}>
+                  <TouchableOpacity
+                    onPress={() => toggleItem(item)}
+                    style={[
+                      styles.itemButton,
+                      selectedItems.includes(item) && styles.itemSelected,
+                    ]}
+                  >
+                    <ThemedText
+                      style={
+                        selectedItems.includes(item)
+                          ? styles.itemTextSelected
+                          : styles.itemText
+                      }
+                    >
+                      {item}
+                    </ThemedText>
+                  </TouchableOpacity>
+                  {selectedItems.includes(item) && (
+                    <View style={styles.quantityContainer}>
+                      <ThemedText style={styles.quantityLabel}>Qty:</ThemedText>
+                      <TextInput
+                        style={styles.quantityInput}
+                        value={quantities[item] || ""}
+                        onChangeText={(val) => updateQuantity(item, val)}
+                        keyboardType="numeric"
+                        placeholder="1"
+                        selectTextOnFocus={true}
+                        placeholderTextColor="#999"
+                      />
+                    </View>
+                  )}
+                </View>
+              ))}
+            </View>
+          </View>
 
-        <Spacer height={15} />
+          <Spacer height={15} />
 
           <ThemedText>Add Other Items (Optional):</ThemedText>
           <Spacer height={10} />
@@ -212,11 +269,9 @@ const ReceiveForm = () => {
               onChangeText={setOtherInput}
               onSubmitEditing={handleAddOtherItem}
               returnKeyType="done"
+              placeholderTextColor="#999"
             />
-            <TouchableOpacity 
-              style={styles.addButton} 
-              onPress={handleAddOtherItem}
-            >
+            <TouchableOpacity style={styles.addButton} onPress={handleAddOtherItem}>
               <ThemedText style={styles.addButtonText}>Add</ThemedText>
             </TouchableOpacity>
           </View>
@@ -226,8 +281,19 @@ const ReceiveForm = () => {
               {otherItems.map((item, index) => (
                 <View key={index} style={styles.otherItemChip}>
                   <ThemedText style={styles.otherItemText}>{item}</ThemedText>
+                  <View style={styles.quantityMini}>
+                    <ThemedText style={styles.quantityMiniLabel}>Qty:</ThemedText>
+                    <TextInput
+                      style={styles.quantityMiniInput}
+                      value={quantities[item] || ""}
+                      onChangeText={(val) => updateQuantity(item, val)}
+                      keyboardType="numeric"
+                      selectTextOnFocus={true}
+                      placeholderTextColor="#999"
+                    />
+                  </View>
                   <TouchableOpacity onPress={() => handleRemoveOtherItem(index)}>
-                    <ThemedText style={styles.removeButton}>✕</ThemedText>
+                    <ThemedText style={styles.removeButton}>X</ThemedText>
                   </TouchableOpacity>
                 </View>
               ))}
@@ -246,7 +312,7 @@ const ReceiveForm = () => {
               ]}
               onPress={() => setSelectionMethod("zip")}
             >
-              <ThemedText style={styles.radioText}>Use Zip Code</ThemedText>
+              <ThemedText style={styles.radioText}>Zip Code</ThemedText>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -256,7 +322,7 @@ const ReceiveForm = () => {
               ]}
               onPress={() => setSelectionMethod("location")}
             >
-              <ThemedText style={styles.radioText}>Use Current Location</ThemedText>
+              <ThemedText style={styles.radioText}>Current Location</ThemedText>
             </TouchableOpacity>
           </View>
 
@@ -300,7 +366,7 @@ export default ReceiveForm;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor:  '#bcd7f5ff', 
+    backgroundColor: '#bcd7f5ff',
   },
   scrollContent: {
     padding: 20,
@@ -349,6 +415,27 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     color: '#fff',
     fontWeight: 'bold',
+  },
+  quantityContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 5,
+    gap: 5,
+  },
+  quantityLabel: {
+    fontSize: 12,
+    color: '#666',
+  },
+  quantityInput: {
+    width: 50,
+    height: 30,
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 8,
+    textAlign: 'center',
+    backgroundColor: '#fff',
+    color: '#000',
   },
   otherInputWrapper: {
     flexDirection: 'row',
@@ -399,6 +486,26 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#4A90E2',
     fontWeight: '500',
+  },
+  quantityMini: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+  },
+  quantityMiniLabel: {
+    fontSize: 11,
+    color: '#4A90E2',
+  },
+  quantityMiniInput: {
+    width: 35,
+    height: 22,
+    borderWidth: 1,
+    borderColor: '#4A90E2',
+    borderRadius: 5,
+    textAlign: 'center',
+    backgroundColor: '#fff',
+    fontSize: 11,
+    color: '#000',
   },
   removeButton: {
     fontSize: 16,
@@ -458,38 +565,4 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     marginTop: 5,
   },
-  sectionCard: {
-    width: '95%',
-    backgroundColor: '#fff',
-    borderRadius: 20,
-    padding: 20,
-    marginVertical: 10,
-    shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 3 },
-    elevation: 5,
-},
-supplyButtonContainer: {
-  width: "68%",        
-  marginTop: 10,
-  gap: 10,             
-  alignItems: "center", 
-},
-
-itemButton: {
-  width: "100%",   
-  paddingVertical: 14,
-  borderRadius: 25,
-  borderWidth: 1,
-  borderColor: "#ccc",
-  backgroundColor: "#fff",
-  shadowColor: "#000",
-  shadowOpacity: 0.05,
-  shadowRadius: 5,
-  shadowOffset: { width: 0, height: 3 },
-  alignItems: "center",
-},
-
-
 });

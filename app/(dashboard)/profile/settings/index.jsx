@@ -14,7 +14,6 @@ const Settings = () => {
   
   const router = useRouter(); 
   const { logout } = useUser();
-  const [darkMode, setDarkMode] = React.useState(false);
   const [notif, setNotif] = React.useState(false);
 
   return (
@@ -38,19 +37,6 @@ const Settings = () => {
         />
       </View>
       
-      <Spacer height={10} />
-
-      <View style={styles.row}>
-        <View style={styles.leftContainer}>
-          <Ionicons name="sunny-outline" size={20} color="black" />
-          <ThemedText>Dark Mode</ThemedText>
-        </View>
-        <Switch
-          value={darkMode}
-          onValueChange={setDarkMode}
-        />
-      </View>
-
       <Spacer height={10} />
       
       <TouchableOpacity onPress={() => router.push("/(dashboard)/profile/settings/terms")}>
