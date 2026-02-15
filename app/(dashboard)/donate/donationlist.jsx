@@ -20,15 +20,52 @@ const MATCHES_COLLECTION_ID = "matches";
 const DONATIONS_COLLECTION_ID = "donations";
 const REQUESTS_COLLECTION_ID = "requests";
 
+const zipCache = new Map();
+const lastGeocodingCall = { timestamp: 0 };
+const GEOCODING_DELAY_MS = 1000;
+
 async function getZipFromLatLng(lat, lng) {
+  const cacheKey = `${lat.toFixed(4)},${lng.toFixed(4)}`;
+  
+  if (zipCache.has(cacheKey)) {
+    return zipCache.get(cacheKey);
+  }
+
+  const now = Date.now();
+  const timeSinceLastCall = now - lastGeocodingCall.timestamp;
+  if (timeSinceLastCall < GEOCODING_DELAY_MS) {
+    await new Promise(resolve => setTimeout(resolve, GEOCODING_DELAY_MS - timeSinceLastCall));
+  }
+
   try {
+    lastGeocodingCall.timestamp = Date.now();
+    
     const response = await fetch(
-      `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`
+      `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`,
+      {
+        headers: {
+          'User-Agent': 'SchoolSupplyMatchApp/1.0'
+        }
+      }
     );
+    
+    if (!response.ok) {
+      zipCache.set(cacheKey, null);
+      return null;
+    }
+    
+    const contentType = response.headers.get("content-type");
+    if (!contentType || !contentType.includes("application/json")) {
+      zipCache.set(cacheKey, null);
+      return null;
+    }
+    
     const data = await response.json();
-    return data.address?.postcode || null;
+    const zipCode = data.address?.postcode || null;
+    zipCache.set(cacheKey, zipCode);
+    return zipCode;
   } catch (err) {
-    console.warn("Failed to get zip code from lat/lng:", err);
+    zipCache.set(cacheKey, null);
     return null;
   }
 }
@@ -44,6 +81,8 @@ const DonationList = () => {
     getDonationsWithMatches,
     approveDonation,
     denyDonation,
+    completeMatch,
+    deleteDonation,
   } = useMatch();
 
   const [donations, setDonations] = useState([]);
@@ -210,47 +249,16 @@ const DonationList = () => {
 
   const handleDismissMatch = async (matchId) => {
     Alert.alert(
-      "Complete & Remove Match",
-      "This will permanently delete this donation and the matched request. Both will be removed from the system. Only do this after successfully completing the exchange.",
+      "Complete Match",
+      "This will mark the donation and request as completed. Do this after successfully exchanging the items.",
       [
         { text: "Cancel", style: "cancel" },
         {
           text: "Complete",
-          style: "destructive",
           onPress: async () => {
             try {
-              // First get the match to find the donation and request IDs
-              const match = await database.getDocument(
-                ITEMS_DATABASE_ID,
-                MATCHES_COLLECTION_ID,
-                matchId
-              );
-
-              // Delete the match
-              await database.deleteDocument(
-                ITEMS_DATABASE_ID,
-                MATCHES_COLLECTION_ID,
-                matchId
-              );
-
-              // Delete the donation
-              await database.deleteDocument(
-                ITEMS_DATABASE_ID,
-                DONATIONS_COLLECTION_ID,
-                match.donationId
-              );
-
-              // Delete the request
-              await database.deleteDocument(
-                ITEMS_DATABASE_ID,
-                REQUESTS_COLLECTION_ID,
-                match.requestId
-              );
-
-              Alert.alert(
-                "Match Completed!", 
-                "The donation and request have been permanently removed. Thank you for using our service!"
-              );
+              await completeMatch(matchId);
+              Alert.alert("Match Completed!", "Thank you for using our service!");
               loadDonations();
             } catch (err) {
               console.error("Error completing match:", err);
@@ -265,7 +273,7 @@ const DonationList = () => {
   const handleDeleteDonation = async (donationId) => {
     Alert.alert(
       "Delete Donation",
-      "Are you sure you want to permanently delete this donation? This cannot be undone.",
+      "Are you sure you want to delete this donation? This cannot be undone.",
       [
         { text: "Cancel", style: "cancel" },
         {
@@ -273,42 +281,8 @@ const DonationList = () => {
           style: "destructive",
           onPress: async () => {
             try {
-              // Delete any matches associated with this donation
-              const matchesRes = await database.listDocuments(
-                ITEMS_DATABASE_ID,
-                MATCHES_COLLECTION_ID,
-                [Query.equal("donationId", donationId), Query.limit(100)]
-              );
-
-              for (const match of matchesRes.documents) {
-                // Set the request back to active if it was pending
-                try {
-                  await database.updateDocument(
-                    ITEMS_DATABASE_ID,
-                    REQUESTS_COLLECTION_ID,
-                    match.requestId,
-                    { status: "active" }
-                  );
-                } catch (err) {
-                  console.error("Error updating request:", err);
-                }
-
-                // Delete the match
-                await database.deleteDocument(
-                  ITEMS_DATABASE_ID,
-                  MATCHES_COLLECTION_ID,
-                  match.$id
-                );
-              }
-
-              // Delete the donation
-              await database.deleteDocument(
-                ITEMS_DATABASE_ID,
-                DONATIONS_COLLECTION_ID,
-                donationId
-              );
-
-              Alert.alert("Donation deleted", "Your donation has been permanently removed.");
+              await deleteDonation(donationId);
+              Alert.alert("Donation deleted", "Your donation has been removed.");
               loadDonations();
             } catch (err) {
               console.error("Error deleting donation:", err);
@@ -430,28 +404,33 @@ const DonationList = () => {
 
           return (
             <View key={donation.$id} style={styles.donationCard}>
-              <ThemedText style={styles.donationTitle}>
-                Donation Items:
-              </ThemedText>
-              <ThemedText>
-                {[...(donation.items || []), ...(donation.other || [])].join(", ")}
-              </ThemedText>
-
-              <ThemedText style={styles.subtle}>
-                Donation Zip: {donation.zipCode || "Location not provided"}
-              </ThemedText>
-
-              {/* Delete button for active donations without matches */}
-              {!pendingMatches.length && !approvedMatches.length && (
-                <TouchableOpacity
-                  style={styles.deleteDonationButton}
-                  onPress={() => handleDeleteDonation(donation.$id)}
-                >
-                  <ThemedText style={styles.deleteDonationText}>
-                    🗑️ Delete This Donation
+              <View style={styles.donationHeader}>
+                <View style={styles.donationHeaderText}>
+                  <ThemedText style={styles.donationTitle}>
+                    Donation Items:
                   </ThemedText>
-                </TouchableOpacity>
-              )}
+                  <ThemedText>
+                    {[...(donation.items || []), ...(donation.other || [])].join(", ")}
+                  </ThemedText>
+                  <ThemedText style={styles.subtle}>
+                    Location: {
+                      donation.zipCode ? `Zip ${donation.zipCode}` : 
+                      (donation.lat != null && donation.lng != null) ? 
+                        `Coordinates: ${donation.lat.toFixed(2)}, ${donation.lng.toFixed(2)}` : 
+                        "Not provided"
+                    }
+                  </ThemedText>
+                </View>
+
+                {!pendingMatches.length && !approvedMatches.length && (
+                  <TouchableOpacity
+                    style={styles.deleteIconButton}
+                    onPress={() => handleDeleteDonation(donation.$id)}
+                  >
+                    <ThemedText style={styles.deleteIconText}>×</ThemedText>
+                  </TouchableOpacity>
+                )}
+              </View>
 
               <Spacer height={10} />
 
@@ -541,10 +520,10 @@ const DonationList = () => {
                               Requestor Contact Information:
                             </ThemedText>
                             <ThemedText style={styles.contactDetail}>
-                              📧 {match.requestorEmail || "Not provided"}
+                              Email: {match.requestorEmail || "Not provided"}
                             </ThemedText>
                             <ThemedText style={styles.contactDetail}>
-                              📱 {match.requestorPhone || "Not provided"}
+                              Phone: {match.requestorPhone || "Not provided"}
                             </ThemedText>
                           </View>
 
@@ -560,7 +539,7 @@ const DonationList = () => {
                           </View>
                           
                           <ThemedText style={styles.instructionText}>
-                            Contact the requestor to arrange pickup/delivery. Tap the ✕ to dismiss this match once completed.
+                            Contact the requestor to arrange pickup/delivery. Tap the X to complete this match.
                           </ThemedText>
                         </View>
                       )}
@@ -750,6 +729,29 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   donationTitle: { fontWeight: "bold", fontSize: 16 },
+  donationHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+  },
+  donationHeaderText: {
+    flex: 1,
+  },
+  deleteIconButton: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: "#FF6B6B",
+    justifyContent: "center",
+    alignItems: "center",
+    marginLeft: 10,
+  },
+  deleteIconText: {
+    color: "white",
+    fontSize: 24,
+    fontWeight: "bold",
+    marginTop: -2,
+  },
   sectionTitle: {
     fontWeight: "bold",
     fontSize: 14,

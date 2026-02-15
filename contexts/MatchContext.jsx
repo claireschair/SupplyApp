@@ -782,6 +782,106 @@ export function MatchProvider({ children }) {
     return match;
   }
 
+  async function completeMatch(matchId) {
+    if (!userId) return null;
+
+    const match = await database.getDocument(
+      ITEMS_DATABASE_ID,
+      MATCHES_COLLECTION_ID,
+      matchId
+    );
+
+    await database.deleteDocument(
+      ITEMS_DATABASE_ID,
+      MATCHES_COLLECTION_ID,
+      matchId
+    );
+
+    await database.updateDocument(
+      ITEMS_DATABASE_ID,
+      DONATIONS_COLLECTION_ID,
+      match.donationId,
+      { status: "completed" }
+    );
+
+    await database.updateDocument(
+      ITEMS_DATABASE_ID,
+      REQUESTS_COLLECTION_ID,
+      match.requestId,
+      { status: "completed" }
+    );
+
+    return true;
+  }
+
+  async function deleteDonation(donationId) {
+    if (!userId) return null;
+
+    const matchesRes = await database.listDocuments(
+      ITEMS_DATABASE_ID,
+      MATCHES_COLLECTION_ID,
+      [Query.equal("donationId", donationId), Query.limit(100)]
+    );
+
+    for (const match of matchesRes.documents) {
+      await database.updateDocument(
+        ITEMS_DATABASE_ID,
+        REQUESTS_COLLECTION_ID,
+        match.requestId,
+        { status: "active" }
+      );
+
+      await database.deleteDocument(
+        ITEMS_DATABASE_ID,
+        MATCHES_COLLECTION_ID,
+        match.$id
+      );
+    }
+
+    await database.updateDocument(
+      ITEMS_DATABASE_ID,
+      DONATIONS_COLLECTION_ID,
+      donationId,
+      { status: "deleted" }
+    );
+
+    return true;
+  }
+
+  async function deleteRequest(requestId) {
+    if (!userId) return null;
+
+    const matchesRes = await database.listDocuments(
+      ITEMS_DATABASE_ID,
+      MATCHES_COLLECTION_ID,
+      [Query.equal("requestId", requestId), Query.limit(100)]
+    );
+
+    for (const match of matchesRes.documents) {
+      await database.updateDocument(
+        ITEMS_DATABASE_ID,
+        DONATIONS_COLLECTION_ID,
+        match.donationId,
+        { status: "active" }
+      );
+
+      await database.deleteDocument(
+        ITEMS_DATABASE_ID,
+        MATCHES_COLLECTION_ID,
+        match.$id
+      );
+    }
+
+    await database.updateDocument(
+      ITEMS_DATABASE_ID,
+      REQUESTS_COLLECTION_ID,
+      requestId,
+      { status: "deleted" }
+    );
+
+    return true;
+  }
+
   return (
     <MatchContext.Provider
       value={{
@@ -795,6 +895,9 @@ export function MatchProvider({ children }) {
         denyDonation,
         provideRequestorContact,
         cleanupExpiredAndTimedOut,
+        completeMatch,
+        deleteDonation,
+        deleteRequest,
       }}
     >
       {children}

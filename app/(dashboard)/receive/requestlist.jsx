@@ -20,15 +20,52 @@ const MATCHES_COLLECTION_ID = "matches";
 const DONATIONS_COLLECTION_ID = "donations";
 const REQUESTS_COLLECTION_ID = "requests";
 
+const zipCache = new Map();
+const lastGeocodingCall = { timestamp: 0 };
+const GEOCODING_DELAY_MS = 1000;
+
 async function getZipFromLatLng(lat, lng) {
+  const cacheKey = `${lat.toFixed(4)},${lng.toFixed(4)}`;
+  
+  if (zipCache.has(cacheKey)) {
+    return zipCache.get(cacheKey);
+  }
+
+  const now = Date.now();
+  const timeSinceLastCall = now - lastGeocodingCall.timestamp;
+  if (timeSinceLastCall < GEOCODING_DELAY_MS) {
+    await new Promise(resolve => setTimeout(resolve, GEOCODING_DELAY_MS - timeSinceLastCall));
+  }
+
   try {
+    lastGeocodingCall.timestamp = Date.now();
+    
     const response = await fetch(
-      `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`
+      `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`,
+      {
+        headers: {
+          'User-Agent': 'SchoolSupplyMatchApp/1.0'
+        }
+      }
     );
+    
+    if (!response.ok) {
+      zipCache.set(cacheKey, null);
+      return null;
+    }
+    
+    const contentType = response.headers.get("content-type");
+    if (!contentType || !contentType.includes("application/json")) {
+      zipCache.set(cacheKey, null);
+      return null;
+    }
+    
     const data = await response.json();
-    return data.address?.postcode || null;
+    const zipCode = data.address?.postcode || null;
+    zipCache.set(cacheKey, zipCode);
+    return zipCode;
   } catch (err) {
-    console.warn("Failed to get zip code from lat/lng:", err);
+    zipCache.set(cacheKey, null);
     return null;
   }
 }
@@ -46,6 +83,8 @@ const RequestList = () => {
     createAndSelectMatch,
     cancelPendingMatch,
     provideRequestorContact,
+    completeMatch,
+    deleteRequest,
   } = useMatch();
 
   const [requests, setRequests] = useState([]);
@@ -261,47 +300,16 @@ const RequestList = () => {
 
   const handleDismissMatch = async (matchId) => {
     Alert.alert(
-      "Complete & Remove Match",
-      "This will permanently delete this request and the matched donation. Both will be removed from the system. Only do this after successfully completing the exchange.",
+      "Complete Match",
+      "This will mark the donation and request as completed. Do this after successfully exchanging the items.",
       [
         { text: "Cancel", style: "cancel" },
         {
           text: "Complete",
-          style: "destructive",
           onPress: async () => {
             try {
-              // First get the match to find the donation and request IDs
-              const match = await database.getDocument(
-                ITEMS_DATABASE_ID,
-                MATCHES_COLLECTION_ID,
-                matchId
-              );
-
-              // Delete the match
-              await database.deleteDocument(
-                ITEMS_DATABASE_ID,
-                MATCHES_COLLECTION_ID,
-                matchId
-              );
-
-              // Delete the request
-              await database.deleteDocument(
-                ITEMS_DATABASE_ID,
-                REQUESTS_COLLECTION_ID,
-                match.requestId
-              );
-
-              // Delete the donation
-              await database.deleteDocument(
-                ITEMS_DATABASE_ID,
-                DONATIONS_COLLECTION_ID,
-                match.donationId
-              );
-
-              Alert.alert(
-                "Match Completed!", 
-                "The request and donation have been permanently removed. Thank you for using our service!"
-              );
+              await completeMatch(matchId);
+              Alert.alert("Match Completed!", "Thank you for using our service!");
               loadRequests();
             } catch (err) {
               console.error("Error completing match:", err);
@@ -316,7 +324,7 @@ const RequestList = () => {
   const handleDeleteRequest = async (requestId) => {
     Alert.alert(
       "Delete Request",
-      "Are you sure you want to permanently delete this request? This cannot be undone.",
+      "Are you sure you want to delete this request? This cannot be undone.",
       [
         { text: "Cancel", style: "cancel" },
         {
@@ -324,42 +332,8 @@ const RequestList = () => {
           style: "destructive",
           onPress: async () => {
             try {
-              // Delete any matches associated with this request
-              const matchesRes = await database.listDocuments(
-                ITEMS_DATABASE_ID,
-                MATCHES_COLLECTION_ID,
-                [Query.equal("requestId", requestId), Query.limit(100)]
-              );
-
-              for (const match of matchesRes.documents) {
-                // Set the donation back to active if it was pending
-                try {
-                  await database.updateDocument(
-                    ITEMS_DATABASE_ID,
-                    DONATIONS_COLLECTION_ID,
-                    match.donationId,
-                    { status: "active" }
-                  );
-                } catch (err) {
-                  console.error("Error updating donation:", err);
-                }
-
-                // Delete the match
-                await database.deleteDocument(
-                  ITEMS_DATABASE_ID,
-                  MATCHES_COLLECTION_ID,
-                  match.$id
-                );
-              }
-
-              // Delete the request
-              await database.deleteDocument(
-                ITEMS_DATABASE_ID,
-                REQUESTS_COLLECTION_ID,
-                requestId
-              );
-
-              Alert.alert("Request deleted", "Your request has been permanently removed.");
+              await deleteRequest(requestId);
+              Alert.alert("Request deleted", "Your request has been removed.");
               loadRequests();
             } catch (err) {
               console.error("Error deleting request:", err);
@@ -484,28 +458,33 @@ const RequestList = () => {
 
           return (
             <View key={request.$id} style={styles.requestCard}>
-              <ThemedText style={styles.requestTitle}>
-                Requested Items:
-              </ThemedText>
-              <ThemedText>
-                {[...(request.items || []), ...(request.other || [])].join(", ")}
-              </ThemedText>
-
-              <ThemedText style={styles.subtle}>
-                Requested Zip: {request.zipCode || "Location not provided"}
-              </ThemedText>
-
-              {/* Delete button for active requests without matches */}
-              {!pendingMatch && !approvedMatch && (
-                <TouchableOpacity
-                  style={styles.deleteRequestButton}
-                  onPress={() => handleDeleteRequest(request.$id)}
-                >
-                  <ThemedText style={styles.deleteRequestText}>
-                    🗑️ Delete This Request
+              <View style={styles.requestHeader}>
+                <View style={styles.requestHeaderText}>
+                  <ThemedText style={styles.requestTitle}>
+                    Requested Items:
                   </ThemedText>
-                </TouchableOpacity>
-              )}
+                  <ThemedText>
+                    {[...(request.items || []), ...(request.other || [])].join(", ")}
+                  </ThemedText>
+                  <ThemedText style={styles.subtle}>
+                    Location: {
+                      request.zipCode ? `Zip ${request.zipCode}` : 
+                      (request.lat != null && request.lng != null) ? 
+                        `Coordinates: ${request.lat.toFixed(2)}, ${request.lng.toFixed(2)}` : 
+                        "Not provided"
+                    }
+                  </ThemedText>
+                </View>
+                
+                {!pendingMatch && !approvedMatch && (
+                  <TouchableOpacity
+                    style={styles.deleteIconButton}
+                    onPress={() => handleDeleteRequest(request.$id)}
+                  >
+                    <ThemedText style={styles.deleteIconText}>×</ThemedText>
+                  </TouchableOpacity>
+                )}
+              </View>
 
               <Spacer height={10} />
 
@@ -548,10 +527,10 @@ const RequestList = () => {
                       Donor Contact Information:
                     </ThemedText>
                     <ThemedText style={styles.contactDetail}>
-                      📧 {approvedMatch.donorEmail || "Not provided"}
+                      Email: {approvedMatch.donorEmail || "Not provided"}
                     </ThemedText>
                     <ThemedText style={styles.contactDetail}>
-                      📱 {approvedMatch.donorPhone || "Not provided"}
+                      Phone: {approvedMatch.donorPhone || "Not provided"}
                     </ThemedText>
                   </View>
 
@@ -567,7 +546,7 @@ const RequestList = () => {
                   </View>
                   
                   <ThemedText style={styles.instructionText}>
-                    Contact the donor to arrange pickup/delivery. Tap the ✕ to dismiss this match once completed.
+                    Contact the donor to arrange pickup/delivery. Tap the X to complete this match.
                   </ThemedText>
                 </View>
               ) : pendingMatch ? (
@@ -821,6 +800,29 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   requestTitle: { fontWeight: "bold", fontSize: 16 },
+  requestHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+  },
+  requestHeaderText: {
+    flex: 1,
+  },
+  deleteIconButton: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: "#FF6B6B",
+    justifyContent: "center",
+    alignItems: "center",
+    marginLeft: 10,
+  },
+  deleteIconText: {
+    color: "white",
+    fontSize: 24,
+    fontWeight: "bold",
+    marginTop: -2,
+  },
   instructionText: {
     fontSize: 13,
     color: "#555",
