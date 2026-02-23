@@ -2,6 +2,7 @@ import { createContext, useContext } from "react";
 import { database } from "../lib/appwrite";
 import { ID, Query } from "react-native-appwrite";
 import { UserContext } from "./UserContext";
+import { getUserPushToken, sendPushNotification } from "../notificationService";
 
 export const MatchContext = createContext();
 
@@ -10,21 +11,18 @@ const DONATIONS_COLLECTION_ID = "donations";
 const REQUESTS_COLLECTION_ID = "requests";
 const MATCHES_COLLECTION_ID = "matches";
 
-// Configuration
 const MATCH_TIMEOUT_HOURS = 48;
 const EXPIRATION_DAYS = 30;
 const MIN_MATCH_SCORE = 1;
 const MAX_DISTANCE_KM = 50;
-const ALLOW_SELF_MATCHING = true; // Set to false in production
+const ALLOW_SELF_MATCHING = true;
 
-// Helper function to normalize items
 function normalizeItems(items = [], other = []) {
   return [...items, ...other]
     .map((i) => String(i).trim().toLowerCase())
     .filter(Boolean);
 }
 
-// Helper to get quantity for an item
 function getQuantity(itemsList, quantitiesList, itemName) {
   const index = itemsList.findIndex(
     (item) => item.toLowerCase() === itemName.toLowerCase()
@@ -33,7 +31,6 @@ function getQuantity(itemsList, quantitiesList, itemName) {
   return quantitiesList && quantitiesList[index] ? quantitiesList[index] : 1;
 }
 
-// Haversine distance calculation
 function haversineDistance(lat1, lon1, lat2, lon2) {
   const R = 6371;
   const toRad = (d) => (d * Math.PI) / 180;
@@ -50,7 +47,6 @@ function haversineDistance(lat1, lon1, lat2, lon2) {
   return 2 * R * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-// Calculate match score between a donation and request
 function calculateMatchScore(donation, request) {
   const donationItems = normalizeItems(donation.items, donation.other);
   const requestItems = normalizeItems(request.items, request.other);
@@ -275,6 +271,51 @@ export function MatchProvider({ children }) {
 
       for (const match of pendingMatches.documents) {
         if (match.pendingSince && new Date(match.pendingSince) < timeoutDate) {
+          try {
+            const donation = await database.getDocument(
+              ITEMS_DATABASE_ID,
+              DONATIONS_COLLECTION_ID,
+              match.donationId
+            );
+            
+            const request = await database.getDocument(
+              ITEMS_DATABASE_ID,
+              REQUESTS_COLLECTION_ID,
+              match.requestId
+            );
+
+            const donorPushToken = await getUserPushToken(donation.userId);
+            const requestorPushToken = await getUserPushToken(request.userId);
+            
+            if (donorPushToken) {
+              await sendPushNotification(
+                donorPushToken,
+                'Match Expired',
+                'A pending match request has timed out and been cancelled.',
+                { 
+                  matchId: match.$id,
+                  type: 'match_timeout',
+                  screen: 'DonationList'
+                }
+              );
+            }
+
+            if (requestorPushToken) {
+              await sendPushNotification(
+                requestorPushToken,
+                'Match Expired',
+                'Your pending match has timed out. You can select a different match.',
+                { 
+                  matchId: match.$id,
+                  type: 'match_timeout',
+                  screen: 'RequestList'
+                }
+              );
+            }
+          } catch (notifErr) {
+            console.error("Error sending timeout notifications:", notifErr);
+          }
+
           await database.updateDocument(
             ITEMS_DATABASE_ID,
             DONATIONS_COLLECTION_ID,
@@ -307,7 +348,6 @@ export function MatchProvider({ children }) {
     try {
       await cleanupExpiredAndTimedOut();
 
-      // Get user's requests with status "active", "pending", OR "matched"
       const requestRes = await database.listDocuments(
         ITEMS_DATABASE_ID,
         REQUESTS_COLLECTION_ID,
@@ -351,7 +391,6 @@ export function MatchProvider({ children }) {
         const matches = [];
         let pendingMatch = null;
 
-        // First, load all existing matches (pending/approved) with their donation details
         for (const match of existingMatchesRes.documents) {
           if (hasTimedOut(match)) {
             try {
@@ -378,7 +417,6 @@ export function MatchProvider({ children }) {
             continue;
           }
 
-          // Load the donation for this match
           try {
             const donation = await database.getDocument(
               ITEMS_DATABASE_ID,
@@ -405,11 +443,9 @@ export function MatchProvider({ children }) {
           }
         }
 
-        // Then, add potential new matches ONLY if no pending match exists
         for (const donation of donationRes.documents) {
           if (isExpired(donation)) continue;
 
-          // Skip if we already have a match with this donation
           if (matches.some(m => m.donationId === donation.$id)) {
             continue;
           }
@@ -464,7 +500,6 @@ export function MatchProvider({ children }) {
     try {
       await cleanupExpiredAndTimedOut();
 
-      // Get donations with status "active", "pending", OR "matched" so they show until dismissed
       const donationRes = await database.listDocuments(
         ITEMS_DATABASE_ID,
         DONATIONS_COLLECTION_ID,
@@ -516,8 +551,6 @@ export function MatchProvider({ children }) {
               match.requestId
             );
 
-            // Skip requests that aren't active OR pending (for this donation)
-            // This handles both expired and already matched requests
             if (isExpired(request)) continue;
 
             matches.push({
@@ -601,6 +634,24 @@ export function MatchProvider({ children }) {
         request.$id,
         { status: "pending" }
       );
+
+      const donorPushToken = await getUserPushToken(donation.userId);
+      
+      if (donorPushToken) {
+        await sendPushNotification(
+          donorPushToken,
+          'New Match Request!',
+          'Someone has selected your donation. Review and approve.',
+          { 
+            matchId: newMatch.$id,
+            type: 'new_match_request',
+            screen: 'DonationList'
+          }
+        );
+        console.log('Push notification sent to donor');
+      } else {
+        console.log('No push token found for donor');
+      }
     } catch (err) {
       await database.deleteDocument(
         ITEMS_DATABASE_ID,
@@ -658,6 +709,32 @@ export function MatchProvider({ children }) {
       matchId
     );
 
+    try {
+      const donation = await database.getDocument(
+        ITEMS_DATABASE_ID,
+        DONATIONS_COLLECTION_ID,
+        match.donationId
+      );
+
+      const donorPushToken = await getUserPushToken(donation.userId);
+      
+      if (donorPushToken) {
+        await sendPushNotification(
+          donorPushToken,
+          'Match Cancelled',
+          'A requestor cancelled their match with your donation.',
+          { 
+            matchId: matchId,
+            type: 'match_cancelled',
+            screen: 'DonationList'
+          }
+        );
+        console.log('Match cancelled notification sent to donor');
+      }
+    } catch (err) {
+      console.error("Error sending cancellation notification:", err);
+    }
+
     return true;
   }
 
@@ -674,7 +751,7 @@ export function MatchProvider({ children }) {
       throw new Error("This match is not pending approval.");
     }
 
-    return await database.updateDocument(
+    const updatedMatch = await database.updateDocument(
       ITEMS_DATABASE_ID,
       MATCHES_COLLECTION_ID,
       matchId,
@@ -684,6 +761,36 @@ export function MatchProvider({ children }) {
         donorPhone: donorContactInfo.phone,
       }
     );
+
+    try {
+      const request = await database.getDocument(
+        ITEMS_DATABASE_ID,
+        REQUESTS_COLLECTION_ID,
+        match.requestId
+      );
+
+      const requestorPushToken = await getUserPushToken(request.userId);
+      
+      if (requestorPushToken) {
+        await sendPushNotification(
+          requestorPushToken,
+          'Match Approved!',
+          'A donor has approved your request. Provide your contact info to complete the match.',
+          { 
+            matchId: matchId,
+            type: 'match_approved',
+            screen: 'RequestList'
+          }
+        );
+        console.log('Push notification sent to requestor');
+      } else {
+        console.log('No push token found for requestor');
+      }
+    } catch (err) {
+      console.error("Error sending push notification:", err);
+    }
+
+    return updatedMatch;
   }
 
   async function denyDonation(matchId) {
@@ -713,11 +820,39 @@ export function MatchProvider({ children }) {
       { status: "active" }
     );
 
-    return await database.deleteDocument(
+    const result = await database.deleteDocument(
       ITEMS_DATABASE_ID,
       MATCHES_COLLECTION_ID,
       matchId
     );
+
+    try {
+      const request = await database.getDocument(
+        ITEMS_DATABASE_ID,
+        REQUESTS_COLLECTION_ID,
+        match.requestId
+      );
+
+      const requestorPushToken = await getUserPushToken(request.userId);
+      
+      if (requestorPushToken) {
+        await sendPushNotification(
+          requestorPushToken,
+          'Match Denied',
+          'The donor declined your request. You can select a different match.',
+          { 
+            matchId: matchId,
+            type: 'match_denied',
+            screen: 'RequestList'
+          }
+        );
+        console.log('Match denied notification sent to requestor');
+      }
+    } catch (err) {
+      console.error("Error sending denial notification:", err);
+    }
+
+    return result;
   }
 
   async function provideRequestorContact(matchId, requestorContactInfo) {
@@ -777,6 +912,32 @@ export function MatchProvider({ children }) {
           m.$id
         );
       }
+    }
+
+    try {
+      const donation = await database.getDocument(
+        ITEMS_DATABASE_ID,
+        DONATIONS_COLLECTION_ID,
+        match.donationId
+      );
+
+      const donorPushToken = await getUserPushToken(donation.userId);
+      
+      if (donorPushToken) {
+        await sendPushNotification(
+          donorPushToken,
+          'Match Complete!',
+          'The requestor provided their contact info. You can now coordinate pickup.',
+          { 
+            matchId: matchId,
+            type: 'contact_provided',
+            screen: 'DonationList'
+          }
+        );
+        console.log('Contact provided notification sent to donor');
+      }
+    } catch (err) {
+      console.error("Error sending contact notification:", err);
     }
 
     return match;

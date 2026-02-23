@@ -1,10 +1,13 @@
-import { StyleSheet, View, Switch, TouchableOpacity } from 'react-native';
-import React from 'react';
+import { StyleSheet, View, Switch, TouchableOpacity, Alert } from 'react-native';
+import React, { useEffect } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 
 import { useRouter } from "expo-router";
 import { useUser } from '../../../../hooks/useUser';
-
+import { 
+  updateNotificationPreference, 
+  getNotificationPreference 
+} from '../../../../notificationService';
 
 import Spacer from "../../../../components/Spacer"
 import ThemedText from "../../../../components/ThemedText"
@@ -13,8 +16,51 @@ import ThemedView from "../../../../components/ThemedView"
 const Settings = () => {
   
   const router = useRouter(); 
-  const { logout } = useUser();
-  const [notif, setNotif] = React.useState(false);
+  const { logout, user } = useUser();
+  const [notif, setNotif] = React.useState(true);
+  const [loading, setLoading] = React.useState(false);
+
+  useEffect(() => {
+    loadNotificationPreference();
+  }, [user]);
+
+  const loadNotificationPreference = async () => {
+    if (user) {
+      const authUserId = user.userID || user.$id;
+      const enabled = await getNotificationPreference(authUserId);
+      setNotif(enabled);
+    }
+  };
+
+  const handleNotificationToggle = async (value) => {
+    if (!user) return;
+    
+    setLoading(true);
+    setNotif(value);
+
+    try {
+      const authUserId = user.userID || user.$id;
+      const success = await updateNotificationPreference(authUserId, value);
+      
+      if (success) {
+        Alert.alert(
+          value ? 'Notifications Enabled' : 'Notifications Disabled',
+          value 
+            ? 'You will receive push notifications for matches.' 
+            : 'You will not receive push notifications.'
+        );
+      } else {
+        setNotif(!value);
+        Alert.alert('Error', 'Failed to update notification settings.');
+      }
+    } catch (err) {
+      console.error('Error toggling notifications:', err);
+      setNotif(!value);
+      Alert.alert('Error', 'Failed to update notification settings.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <ThemedView style={styles.container}>
@@ -33,7 +79,8 @@ const Settings = () => {
         </View>
         <Switch
           value={notif}
-          onValueChange={setNotif}
+          onValueChange={handleNotificationToggle}
+          disabled={loading}
         />
       </View>
       
@@ -91,8 +138,6 @@ const Settings = () => {
           </View>
         </View>
       </TouchableOpacity>
-
-      
 
     </ThemedView>
   )
