@@ -162,7 +162,7 @@ export function MatchProvider({ children }) {
     const allItems = [...items, ...other];
     const itemQuantities = allItems.map(item => quantitiesObject[item] || 1);
     
-    return database.createDocument(
+    const newDonation = await database.createDocument(
       ITEMS_DATABASE_ID,
       DONATIONS_COLLECTION_ID,
       ID.unique(),
@@ -179,6 +179,52 @@ export function MatchProvider({ children }) {
         expiresAt: expiresAt.toISOString(),
       }
     );
+
+    try {
+      const activeRequests = await database.listDocuments(
+        ITEMS_DATABASE_ID,
+        REQUESTS_COLLECTION_ID,
+        [
+          Query.equal("status", "active"),
+          Query.limit(100)
+        ]
+      );
+
+      const notifiedUsers = new Set();
+
+      for (const request of activeRequests.documents) {
+        if (request.userId === userId && !ALLOW_SELF_MATCHING) continue;
+        if (isExpired(request)) continue;
+
+        const matchResult = calculateMatchScore(newDonation, request);
+        
+        if (matchResult && matchResult.score >= MIN_MATCH_SCORE) {
+          if (!notifiedUsers.has(request.userId)) {
+            const requestorPushToken = await getUserPushToken(request.userId);
+            
+            if (requestorPushToken) {
+              await sendPushNotification(
+                requestorPushToken,
+                'New Match Found!',
+                `A new donation matching your request is available. Check it out!`,
+                { 
+                  donationId: newDonation.$id,
+                  requestId: request.$id,
+                  type: 'new_potential_match',
+                  screen: 'RequestList'
+                }
+              );
+              notifiedUsers.add(request.userId);
+              console.log('New potential match notification sent to requestor');
+            }
+          }
+        }
+      }
+    } catch (err) {
+      console.error("Error sending new match notifications:", err);
+    }
+
+    return newDonation;
   }
 
   async function saveRequest(items, other = [], locationData = {}, quantitiesObject = {}) {
@@ -192,7 +238,7 @@ export function MatchProvider({ children }) {
     const allItems = [...items, ...other];
     const itemQuantities = allItems.map(item => quantitiesObject[item] || 1);
     
-    return database.createDocument(
+    const newRequest = await database.createDocument(
       ITEMS_DATABASE_ID,
       REQUESTS_COLLECTION_ID,
       ID.unique(),
@@ -209,6 +255,52 @@ export function MatchProvider({ children }) {
         expiresAt: expiresAt.toISOString(),
       }
     );
+
+    try {
+      const activeDonations = await database.listDocuments(
+        ITEMS_DATABASE_ID,
+        DONATIONS_COLLECTION_ID,
+        [
+          Query.equal("status", "active"),
+          Query.limit(100)
+        ]
+      );
+
+      const notifiedUsers = new Set();
+
+      for (const donation of activeDonations.documents) {
+        if (donation.userId === userId && !ALLOW_SELF_MATCHING) continue;
+        if (isExpired(donation)) continue;
+
+        const matchResult = calculateMatchScore(donation, newRequest);
+        
+        if (matchResult && matchResult.score >= MIN_MATCH_SCORE) {
+          if (!notifiedUsers.has(donation.userId)) {
+            const donorPushToken = await getUserPushToken(donation.userId);
+            
+            if (donorPushToken) {
+              await sendPushNotification(
+                donorPushToken,
+                'New Match Found!',
+                `A new request matching your donation is available. Check it out!`,
+                { 
+                  donationId: donation.$id,
+                  requestId: newRequest.$id,
+                  type: 'new_potential_match',
+                  screen: 'DonationList'
+                }
+              );
+              notifiedUsers.add(donation.userId);
+              console.log('New potential match notification sent to donor');
+            }
+          }
+        }
+      }
+    } catch (err) {
+      console.error("Error sending new match notifications:", err);
+    }
+
+    return newRequest;
   }
 
   async function cleanupExpiredAndTimedOut() {
