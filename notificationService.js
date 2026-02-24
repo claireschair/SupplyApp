@@ -52,17 +52,27 @@ export async function registerForPushNotificationsAsync() {
 }
 
 export async function savePushTokenToUser(authUserId, token) {
-  if (!token || !authUserId) return;
+  if (!token || !authUserId) {
+    console.log('savePushTokenToUser called with:', { authUserId, hasToken: !!token });
+    return;
+  }
 
   try {
+    console.log('Looking for user with userID:', authUserId);
+    console.log('Database ID:', process.env.EXPO_PUBLIC_APPWRITE_DATABASE_ID);
+    console.log('Collection ID:', process.env.EXPO_PUBLIC_APPWRITE_USERS_COLLECTION_ID);
+    
     const userDocs = await database.listDocuments(
       process.env.EXPO_PUBLIC_APPWRITE_DATABASE_ID,
       process.env.EXPO_PUBLIC_APPWRITE_USERS_COLLECTION_ID,
       [Query.equal("userID", authUserId)]
     );
 
+    console.log('Found documents:', userDocs.documents.length);
+    
     if (userDocs.documents.length > 0) {
       const userDoc = userDocs.documents[0];
+      console.log('User document found:', userDoc.$id);
       
       await database.updateDocument(
         process.env.EXPO_PUBLIC_APPWRITE_DATABASE_ID,
@@ -70,12 +80,26 @@ export async function savePushTokenToUser(authUserId, token) {
         userDoc.$id,
         { pushToken: token }
       );
-      console.log('Push token saved to user document:', userDoc.$id);
+      console.log('Push token saved successfully to document:', userDoc.$id);
     } else {
       console.log('No user document found for userID:', authUserId);
+      console.log('Attempting to list all users to debug...');
+      
+      const allUsers = await database.listDocuments(
+        process.env.EXPO_PUBLIC_APPWRITE_DATABASE_ID,
+        process.env.EXPO_PUBLIC_APPWRITE_USERS_COLLECTION_ID,
+        [Query.limit(5)]
+      );
+      
+      console.log('Sample user documents:', allUsers.documents.map(d => ({
+        id: d.$id,
+        userID: d.userID,
+        email: d.email
+      })));
     }
   } catch (err) {
     console.error('Error saving push token:', err);
+    console.error('Error details:', JSON.stringify(err, null, 2));
   }
 }
 
@@ -116,14 +140,39 @@ export async function sendPushNotification(expoPushToken, title, body, data = {}
 
 export async function getUserPushToken(authUserId) {
   try {
-    const userDocs = await database.listDocuments(
+    console.log('getUserPushToken called for userID:', authUserId);
+    
+    let userDocs = await database.listDocuments(
       process.env.EXPO_PUBLIC_APPWRITE_DATABASE_ID,
       process.env.EXPO_PUBLIC_APPWRITE_USERS_COLLECTION_ID,
       [Query.equal("userID", authUserId)]
     );
 
+    console.log('getUserPushToken found documents by userID:', userDocs.documents.length);
+
+    if (userDocs.documents.length === 0) {
+      console.log('Trying to find by document $id instead...');
+      try {
+        const userDoc = await database.getDocument(
+          process.env.EXPO_PUBLIC_APPWRITE_DATABASE_ID,
+          process.env.EXPO_PUBLIC_APPWRITE_USERS_COLLECTION_ID,
+          authUserId
+        );
+        userDocs = { documents: [userDoc] };
+        console.log('Found by document $id');
+      } catch (err) {
+        console.log('Not found by document $id either');
+      }
+    }
+
     if (userDocs.documents.length > 0) {
       const userDoc = userDocs.documents[0];
+      console.log('User doc:', {
+        id: userDoc.$id,
+        userID: userDoc.userID,
+        hasPushToken: !!userDoc.pushToken,
+        notifEnabled: userDoc.notificationsEnabled
+      });
       
       if (userDoc.notificationsEnabled === false) {
         console.log(`Notifications disabled for user ${authUserId}`);
@@ -131,7 +180,7 @@ export async function getUserPushToken(authUserId) {
       }
       
       const token = userDoc.pushToken || null;
-      console.log(`Push token for user ${authUserId}:`, token ? 'Found' : 'Not found');
+      console.log(`Push token for user ${authUserId}:`, token ? `Found (${token.substring(0, 20)}...)` : 'Not found');
       return token;
     }
     
@@ -139,6 +188,7 @@ export async function getUserPushToken(authUserId) {
     return null;
   } catch (err) {
     console.error('Error getting user push token:', err);
+    console.error('Error details:', JSON.stringify(err, null, 2));
     return null;
   }
 }
