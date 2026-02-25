@@ -30,7 +30,7 @@ const DashboardLayout = () => {
         headerShown: false,
         tabBarShowLabel: false,
         tabBarStyle: {
-          backgroundColor: theme.navBackground,
+          backgroundColor: '#edf1fa',
           height: 80,
           paddingTop: 10,
         },
