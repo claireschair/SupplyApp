@@ -361,7 +361,7 @@ const RequestList = () => {
 
   return (
     <ThemedView style={styles.container}>
-      <Spacer />
+      <Spacer height={70} />
       <ThemedText title style={styles.heading}>
         Request Matches
       </ThemedText>
@@ -709,11 +709,14 @@ export default RequestList;
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 15 },
-  heading: { fontSize: 20, fontWeight: "bold", textAlign: "center" },
+  heading: { 
+    fontSize: 30, fontWeight: "bold", textAlign: "center",
+    paddingBottom: 30, 
+  },
   searchContainer: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 10,
+    marginBottom: 20,
     gap: 8,
   },
   searchInput: {

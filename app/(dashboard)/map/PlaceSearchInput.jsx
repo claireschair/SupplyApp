@@ -5,6 +5,7 @@ import {
   TouchableOpacity,
   StyleSheet,
   Platform,
+  Keyboard,
 } from "react-native";
 import ThemedText from "../../../components/ThemedText";
 import * as Location from "expo-location";
@@ -100,6 +101,8 @@ const PlaceSearchInput = ({ onSelect }) => {
                 style={styles.result}
                 onPress={() => {
                   const displayName = getDisplayName(item);
+
+                   Keyboard.dismiss();
                   setQuery(displayName);
                   setResults([]);
                   onSelect({

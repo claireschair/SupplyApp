@@ -330,7 +330,7 @@ const ReceiveForm = () => {
 
           {selectionMethod === "zip" && (
             <ThemedTextInput
-              style={{ marginBottom: 15, width: "90%" }}
+              style={{ marginBottom: 15, width: "90%", color: '#fff' }}
               placeholder="Enter Zip Code"
               value={zipCode}
               onChangeText={setZipCode}

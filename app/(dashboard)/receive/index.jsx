@@ -1,7 +1,6 @@
-import { StyleSheet, View, Image, TouchableOpacity, Dimensions } from 'react-native';
+import { StyleSheet, View, Image, TouchableOpacity, Dimensions, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-
-import { useRouter } from 'expo-router'; 
+import { useRouter } from 'expo-router';
 
 import ThemedText from "../../../components/ThemedText";
 import ThemedView from "../../../components/ThemedView";
@@ -12,67 +11,70 @@ import ReceiveIcon from "../../../assets/icons/receive.png";
 const { width } = Dimensions.get('window');
 
 const Receive = () => {
-  const router = useRouter(); 
+  const router = useRouter();
+
+  const buttons = [
+    {
+      icon: 'document-text-outline',
+      label: 'Need Form',
+      description: 'Fill out a request form to specify the supplies or assistance you need.',
+      route: '/(dashboard)/receive/form',
+    },
+    {
+      icon: 'location-outline',
+      label: 'Supplies Near Me',
+      description: 'Find nearby locations where supplies are available for pickup.',
+      route: '/(dashboard)/map',
+    },
+    {
+      icon: 'heart-circle-outline',
+      label: 'Add to Your Wishlist',
+      description: 'Add items you need to your personal wishlist so donors can help.',
+      route: '/(dashboard)/receive/wishlist',
+    },
+    {
+      icon: 'list-outline',
+      label: 'Manage Your Requests',
+      description: 'Keep track of all your requests and update their status easily.',
+      route: '/(dashboard)/receive/requestlist',
+    },
+  ];
 
   return (
     <ThemedView style={styles.container}>
-      <View style={styles.topBackground} />
+      <ScrollView contentContainerStyle={styles.scrollContainer} showsVerticalScrollIndicator={false}>
+        <View style={styles.header}>
+          <View style={styles.topBackground} />
+          <View style={styles.curveOverlay} />
+          <Image source={ReceiveIcon} style={styles.logo} resizeMode="contain" />
+          <Spacer height={15} />
 
-      <View style={styles.header}>
-        <View style={styles.curveOverlay} />
-        <Image source={ReceiveIcon} style={styles.logo} resizeMode="contain" />
-        <Spacer height={15} />
+          <ThemedText title style={styles.heading}>Receive</ThemedText>
+          <ThemedText style={styles.subtitle}>Request supplies or assistance from your community easily</ThemedText>
+        </View>
 
-        <ThemedText title style={styles.heading}>
-          Receive
-        </ThemedText>
         <Spacer height={30} />
 
-        <View style={styles.buttonRow}>
-          <TouchableOpacity 
-            style={styles.squareButton}
-            onPress={() => router.push('/(dashboard)/receive/form')}
-          >
-            <Ionicons name="document-text-outline" size={60} color="#f2f2f2" />
-          </TouchableOpacity>
-
-          <TouchableOpacity 
-            style={styles.squareButton}
-            onPress={() => router.push('/(dashboard)/map')}
-          >
-            <Ionicons name="location-outline" size={60} color="#f2f2f2" />
-          </TouchableOpacity>
+        <View style={styles.buttonsContainer}>
+          {buttons.map((btn, idx) => (
+            <View key={idx} style={styles.buttonWithDesc}>
+              <View style={styles.descContainer}>
+                <ThemedText style={styles.buttonLabel}>{btn.label}</ThemedText>
+                <ThemedText style={styles.description}>{btn.description}</ThemedText>
+              </View>
+              <TouchableOpacity
+                style={styles.squareButton}
+                activeOpacity={0.85}
+                onPress={() => router.push(btn.route)}
+              >
+                <Ionicons name={btn.icon} size={50} color="#fff" />
+              </TouchableOpacity>
+            </View>
+          ))}
         </View>
 
-        <View style={styles.textRow}>
-          <ThemedText style={styles.buttonLabel}>Need Form</ThemedText>
-          <ThemedText style={styles.buttonLabel}>Supplies Near Me</ThemedText>
-        </View>
-
-        <Spacer height={40} />
-
-        <View style={styles.buttonRow}>
-          <TouchableOpacity 
-            style={styles.squareButton}
-            onPress={() => router.push('/(dashboard)/receive/wishlist')}
-          >
-            <Ionicons name="heart-circle-outline" size={60} color="#f2f2f2" />
-          </TouchableOpacity>
-        
-          <TouchableOpacity 
-            style={styles.squareButton}
-            onPress={() => router.push('/(dashboard)/receive/requestlist')}
-          >
-            <Ionicons name="list-outline" size={60} color="#f2f2f2" />
-          </TouchableOpacity>
-        </View>
-        
-        <View style={styles.textRow}>
-          <ThemedText style={styles.buttonLabel}>Add to Your Wishlist</ThemedText>
-          <ThemedText style={styles.buttonLabel}>Manage Your Requests</ThemedText>
-        </View>
-
-      </View>
+        <Spacer height={50} />
+      </ScrollView>
     </ThemedView>
   );
 };
@@ -81,15 +83,7 @@ export default Receive;
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f8f9fa' },
-
-  topBackground: {
-    position: 'absolute',
-    top: 0,
-    width: '100%',
-    height: 250,
-    backgroundColor: '#4A90E2',
-    zIndex: 0,
-  },
+  scrollContainer: { alignItems: 'center', paddingBottom: 50 },
 
   header: {
     width: '100%',
@@ -98,6 +92,15 @@ const styles = StyleSheet.create({
     position: 'relative',
     overflow: 'hidden',
     paddingTop: 30,
+  },
+
+  topBackground: {
+    position: 'absolute',
+    top: 0,
+    width: '100%',
+    height: 250,
+    backgroundColor: '#4A90E2',
+    zIndex: 0,
   },
 
   curveOverlay: {
@@ -127,33 +130,54 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
 
-
-  buttonRow: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 35,
+  subtitle: {
+    fontSize: 16,
+    color: '#666',
+    textAlign: 'center',
+    marginHorizontal: 40,
   },
 
-  textRow: {
+  buttonsContainer: {
+    width: '90%',
+    marginTop: 20,
+  },
+
+  buttonWithDesc: {
     flexDirection: 'row',
-    justifyContent: 'center',
     alignItems: 'center',
-    gap: 35,
-    marginTop: 8,
+    marginBottom: 25,
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    padding: 15,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
+    elevation: 5,
   },
 
   squareButton: {
-    width: 130,
-    height: 130,
-    backgroundColor: '#415ba8ff',
+    width: 90,
+    height: 90,
+    backgroundColor: '#6cc8df',
     borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
   },
 
+  descContainer: {
+    flex: 1,
+    marginRight: 15,
+  },
+
   buttonLabel: {
-    textAlign: 'center',
-    width: 130,
+    fontWeight: 'bold',
+    fontSize: 16,
+    marginBottom: 5,
+  },
+
+  description: {
+    fontSize: 14,
+    color: '#666',
   },
 });
