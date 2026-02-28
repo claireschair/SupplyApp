@@ -39,6 +39,7 @@ const Home = () => {
           <Pressable style={styles.button}>
             <ThemedText style={styles.buttonText}>
               Register
+<<<<<<< HEAD
             </ThemedText>
           </Pressable>
         </Link>
@@ -47,6 +48,8 @@ const Home = () => {
           <Pressable style={styles.button}>
             <ThemedText style={styles.buttonText}>
               Profile
+=======
+>>>>>>> 6f03367f2078f9d0ac4b5ac7eb27407cdedda351
             </ThemedText>
           </Pressable>
         </Link>

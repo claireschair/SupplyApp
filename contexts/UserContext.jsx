@@ -1,6 +1,10 @@
 import { createContext, useEffect, useState } from "react";
 import { account, database } from "../lib/appwrite";
 import { ID, Query } from "react-native-appwrite";
+import { 
+  registerForPushNotificationsAsync, 
+  savePushTokenToUser 
+} from "../notificationService";
 
 export const UserContext = createContext();
 
@@ -60,6 +64,37 @@ export function UserProvider({ children }) {
   useEffect(() => {
     getInitialUserValue();
   }, []);
+
+  useEffect(() => {
+    if (user && user.$id) {
+      setupPushNotifications();
+    }
+  }, [user]);
+
+  async function setupPushNotifications() {
+    try {
+      console.log('Setting up push notifications...');
+      console.log('Current user object:', user ? {
+        id: user.$id,
+        userID: user.userID,
+        email: user.email
+      } : 'No user');
+      
+      const token = await registerForPushNotificationsAsync();
+      console.log('Got push token:', token ? `${token.substring(0, 30)}...` : 'No token');
+      
+      if (token && user) {
+        const authUserId = user.userID || user.$id;
+        console.log('Using authUserId:', authUserId);
+        await savePushTokenToUser(authUserId, token);
+        console.log('Push notifications registered successfully');
+      } else {
+        console.log('Cannot setup push notifications:', { hasToken: !!token, hasUser: !!user });
+      }
+    } catch (err) {
+      console.error('Error setting up push notifications:', err);
+    }
+  }
 
   return (
     <UserContext.Provider
