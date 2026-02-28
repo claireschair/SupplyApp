@@ -66,9 +66,6 @@ const Profile = () => {
         </ThemedText>
 
         <Spacer height={5} />
-        <ThemedText title style={styles.subheading}>
-          trust me I have an idea but i need to talk w/ yall
-        </ThemedText>
 
       </View>
 

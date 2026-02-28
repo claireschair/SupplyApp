@@ -30,7 +30,7 @@ const Home = () => {
         <Link href="/login" asChild>
           <Pressable style={styles.button}>
             <ThemedText style={styles.buttonText}>
-              Login Page
+              Login
             </ThemedText>
           </Pressable>
         </Link>
@@ -38,7 +38,7 @@ const Home = () => {
         <Link href="/register" asChild>
           <Pressable style={styles.button}>
             <ThemedText style={styles.buttonText}>
-              Register Page
+              Register
             </ThemedText>
           </Pressable>
         </Link>
@@ -46,7 +46,7 @@ const Home = () => {
         <Link href="/profile" asChild>
           <Pressable style={styles.button}>
             <ThemedText style={styles.buttonText}>
-              Profile Page
+              Profile
             </ThemedText>
           </Pressable>
         </Link>
