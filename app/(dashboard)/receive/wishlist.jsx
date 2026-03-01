@@ -77,12 +77,20 @@ const Wishlist = () => {
 
   return (
     <ThemedView style={styles.container}>
-      <Spacer />
-      <ThemedText title style={styles.heading}>
-        Add to Your Wishlist
+      <Spacer height={80} />
+      <View style={styles.headerCard}>
+      <ThemedText style={styles.heading}>
+        Add To Your Wishlist
       </ThemedText>
 
-      <Spacer height={20} />
+      <Spacer height={2} />
+
+      <ThemedText style={styles.subtitle}>
+        Share classroom needs with supporters
+      </ThemedText>
+      </View>
+
+      <Spacer height={10} />
 
       {loading ? (
         <View style={styles.centerContent}>
@@ -96,9 +104,13 @@ const Wishlist = () => {
         </View>
       ) : !isTeacher ? (
         <View style={styles.centerContent}>
-          <ThemedText style={styles.warningText}>
-            Only teachers can create wishlists.
-          </ThemedText>
+          <View style={styles.emptyState}>
+            <Ionicons name="lock-closed-outline" size={40} color="#999" />
+            <Spacer height={12} />
+            <ThemedText style={styles.warningText}>
+              Only teachers can create wishlists.
+            </ThemedText>
+          </View>
           <Spacer height={10} />
           <ThemedText style={styles.subtleText}>
             If you are a teacher, please contact support to update your account.
@@ -202,7 +214,8 @@ export default Wishlist;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 15,
+    paddingHorizontal: 20,
+    backgroundColor: "#dce5fd",
   },
   centerContent: {
     flex: 1,
@@ -221,26 +234,51 @@ const styles = StyleSheet.create({
     textAlign: "center",
     color: "#666",
   },
+  headerCard: {
+    backgroundColor: "#699cea",
+    paddingVertical: 28,
+    paddingHorizontal: 24,
+    borderRadius: 30,
+    alignSelf: "center",
+    marginBottom: 35,
+
+    shadowColor: "#4F7BFF",
+    shadowOpacity: 0.12,
+    shadowRadius: 20,
+    shadowOffset: { width: 0, height: 10 },
+    elevation: 8,
+  },
   heading: {
-    fontWeight: "bold",
-    fontSize: 20,
+    fontSize: 26,
+    fontWeight: "800",
     textAlign: "center",
+    color: "#f0f4ff",
+  },
+  subtitle: {
+    fontSize: 15,
+    textAlign: "center",
+    color: "#e2f0ff",
+    lineHeight: 22,
   },
   formWrapper: {
-    backgroundColor: "#f5f5f5",
-    padding: 20,
-    borderRadius: 12,
+    backgroundColor: "#FFFFFF",
+    padding: 24,
+    borderRadius: 20,
+    shadowColor: "#000",
+    shadowOpacity: 0.08,
+    shadowRadius: 20,
+    shadowOffset: { width: 0, height: 10 },
+    elevation: 6,
   },
   label: {
     fontWeight: "600",
     fontSize: 14,
   },
   input: {
-    backgroundColor: "white",
-    borderWidth: 1,
-    borderColor: "#ddd",
-    borderRadius: 8,
-    padding: 12,
+    backgroundColor: "#e4ebf597",
+    borderWidth: 0,
+    borderRadius: 14,
+    padding: 16,
     fontSize: 16,
     color: "#111",
   },
@@ -274,12 +312,10 @@ const styles = StyleSheet.create({
   itemChip: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#E0F0FF",
-    borderRadius: 20,
-    paddingVertical: 6,
-    paddingLeft: 12,
-    paddingRight: 8,
-    gap: 8,
+    backgroundColor: "#EEF4FF",
+    borderRadius: 30,
+    paddingVertical: 8,
+    paddingHorizontal: 14,
   },
   itemText: {
     fontSize: 14,
@@ -312,13 +348,18 @@ const styles = StyleSheet.create({
   },
   button: {
     backgroundColor: "#007AFF",
-    padding: 15,
-    borderRadius: 10,
+    paddingVertical: 18,
+    borderRadius: 16,
     alignItems: "center",
+    shadowColor: "#4F7BFF",
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 6,
   },
   buttonText: {
     color: "white",
     fontWeight: "bold",
-    fontSize: 16,
+    fontSize: 18,
   },
 });

@@ -5,6 +5,7 @@ import Spacer from "../../../components/Spacer";
 import ThemedText from "../../../components/ThemedText";
 import ThemedView from "../../../components/ThemedView";
 import { database } from '../../../lib/appwrite';
+import { Ionicons } from '@expo/vector-icons';
 
 const WISHLIST_DB_ID = "6944caa80022e2cfa289";
 const WISHLIST_COLLECTION_ID = "teacher_wishlists";
@@ -68,11 +69,17 @@ const Wishlist = () => {
 
   return (
     <ThemedView style={styles.pageContainer}>
-      <Spacer />
-      <ThemedText title style={styles.heading}>
-        Teachers' Amazon Wishlists
+      <Spacer height={70} />
+      <View style={styles.headerCard}>
+      <ThemedText style={styles.heading}>
+       Teachers' Wishlists
+       </ThemedText>
+      <Spacer height={2} />
+      <ThemedText style={styles.subtitle}>
+       Support classrooms by donating needed supplies 
       </ThemedText>
-      <Spacer height={20} />
+      </View>
+      
 
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
         {wishlists.length === 0 ? (
@@ -95,6 +102,8 @@ const Wishlist = () => {
             return (
             <View key={wishlist.$id} style={styles.wishlistCard}>
               <View style={styles.cardHeader}>
+                <View style={styles.profileCircle}>
+                <Ionicons name="school" size={18} color="#4F7BFF" /></View>
                 <ThemedText style={styles.teacherName}>{wishlist.Name || "Anonymous Teacher"}</ThemedText>
               </View>
 
@@ -138,6 +147,7 @@ const styles = StyleSheet.create({
   pageContainer: {
     flex: 1,
     padding: 15,
+    backgroundColor: "#e6edf4"
   },
   container: {
     flex: 1,
@@ -145,10 +155,33 @@ const styles = StyleSheet.create({
     alignItems: "center",
     padding: 15,
   },
+  headerCard: {
+    backgroundColor: "#699cea",
+    paddingVertical: 28,
+    paddingHorizontal: 24,
+    borderRadius: 30,
+    alignSelf: "center",
+    marginBottom: 35,
+    width: "90%",
+    //height: "15%",
+
+    shadowColor: "#4F7BFF",
+    shadowOpacity: 0.12,
+    shadowRadius: 20,
+    shadowOffset: { width: 0, height: 10 },
+    elevation: 8,
+  },
   heading: {
-    fontWeight: "bold",
-    fontSize: 20,
+    fontSize: 26,
+    fontWeight: "800",
     textAlign: "center",
+    color: "#f0f4ff",
+  },
+  subtitle: {
+    fontSize: 12,
+    textAlign: "center",
+    color: "#e2f0ff",
+    lineHeight: 22,
   },
   scrollView: {
     flex: 1,
@@ -157,22 +190,30 @@ const styles = StyleSheet.create({
     paddingBottom: 20,
   },
   wishlistCard: {
-    backgroundColor: "#f5f5f5",
-    padding: 20,
-    borderRadius: 12,
-    marginBottom: 15,
+    backgroundColor: "#FFFFFF",
+    padding: 22,
+    borderRadius: 20,
+    marginBottom: 18,
+    shadowColor: "#000",
+    shadowOpacity: 0.06,
+    shadowRadius: 18,
     borderWidth: 1,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 4,
     borderColor: "#e0e0e0",
   },
   cardHeader: {
     borderBottomWidth: 2,
     borderBottomColor: "#007AFF",
     paddingBottom: 10,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
   },
   teacherName: {
     fontSize: 18,
-    fontWeight: "bold",
-    color: "#111",
+    fontWeight: "700",
+    color: "#050c1f",
   },
   sectionLabel: {
     fontSize: 14,
@@ -184,21 +225,27 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   itemChip: {
-    backgroundColor: "white",
-    padding: 10,
-    borderRadius: 8,
-    borderLeftWidth: 3,
-    borderLeftColor: "#007AFF",
+    backgroundColor: "#F3F6FB",
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "#8abcf2",
   },
   itemText: {
     fontSize: 14,
-    color: "#333",
+    color: "#374151",
   },
   amazonButton: {
-    backgroundColor: "#FF9900",
-    padding: 15,
-    borderRadius: 8,
+    backgroundColor: "#4888cb",
+    paddingVertical: 16,
+    borderRadius: 16,
     alignItems: "center",
+    shadowColor: "#5e6783",
+    shadowOpacity: 0.25,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 4,
   },
   amazonButtonText: {
     color: "white",
@@ -233,5 +280,15 @@ const styles = StyleSheet.create({
   retryButtonText: {
     color: "white",
     fontWeight: "600",
+  },
+  profileCircle: {
+  width: 38,
+  height: 38,
+  borderRadius: 19,
+  backgroundColor: "#E8F1FF",
+  justifyContent: "center",
+  alignItems: "center",
+  borderWidth: 1,
+  borderColor: "#aac2f2",
   },
 });

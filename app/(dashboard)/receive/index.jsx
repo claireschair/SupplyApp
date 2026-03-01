@@ -42,7 +42,7 @@ const Receive = () => {
 
   return (
     <ThemedView style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scrollContainer} showsVerticalScrollIndicator={false}>
+      <ScrollView style={styles.scrollView}  contentContainerStyle={styles.scrollContainer} showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
           <View style={styles.topBackground} />
           <View style={styles.curveOverlay} />
@@ -83,7 +83,7 @@ export default Receive;
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f8f9fa' },
-  scrollContainer: { alignItems: 'center', paddingBottom: 50 },
+  scrollContainer: { alignItems: 'center', paddingBottom: 50, backgroundColor: '#f8f9fa' },
 
   header: {
     width: '100%',
@@ -112,6 +112,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#f8f9fa',
     borderRadius: 350,
     zIndex: 0,
+  },
+
+  scrollView:{
+    flex:1,
+    backgroundColor: "#4A90E2",
   },
 
   logo: {
