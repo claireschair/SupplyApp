@@ -215,7 +215,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     paddingHorizontal: 20,
-    backgroundColor: "#dce5fd",
+    backgroundColor: "#ebf0ff",
   },
   centerContent: {
     flex: 1,
@@ -294,7 +294,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   addButton: {
-    backgroundColor: "#007AFF",
+    backgroundColor: "#519ae9",
     paddingHorizontal: 20,
     justifyContent: "center",
     borderRadius: 8,
@@ -323,8 +323,9 @@ const styles = StyleSheet.create({
   },
   removeButton: {
     fontSize: 16,
-    color: "#007AFF",
+    //backgroundColor: "#519ae9",
     fontWeight: "bold",
+    paddingLeft: 4,
   },
   keyboardButtonWrapper: {
     alignItems: "center",
@@ -347,7 +348,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   button: {
-    backgroundColor: "#007AFF",
+    backgroundColor: "#448bd6",
     paddingVertical: 18,
     borderRadius: 16,
     alignItems: "center",

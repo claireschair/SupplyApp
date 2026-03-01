@@ -23,7 +23,7 @@ const Receive = () => {
     {
       icon: 'location-outline',
       label: 'Donation Spots',
-      description: 'Find nearby donation centers where you can drop off your contributions.',
+      description: 'Find nearby donation centers where you can drop off your contributions or create your own drive.',
       route: '/(dashboard)/map',
     },
     {
