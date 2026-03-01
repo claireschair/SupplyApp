@@ -8,8 +8,9 @@ import Spacer from '../components/Spacer'
 
 const Home = () => {
   return (
+    
     <ThemedView style={styles.container}>
-
+      
       <View style={styles.header}>
         <View style={styles.logoCircle}>
           <ThemedLogo />
@@ -45,6 +46,7 @@ const Home = () => {
       </View>
 
     </ThemedView>
+    
   )
 }
 
@@ -105,4 +107,5 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#ffffffff'
   },
+  
 })

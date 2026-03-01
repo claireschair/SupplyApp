@@ -43,86 +43,97 @@ const Register = () => {
   }
 
   return (
-    <TouchableWithoutFeedback onPress={() => {
-      Keyboard.dismiss()
-      setDropdownOpen(false)
-    }}>
-      <ThemedView style={styles.container}>
+<TouchableWithoutFeedback
+  onPress={() => {
+    Keyboard.dismiss()
+    setDropdownOpen(false)
+  }}
+>
+  <ThemedView style={styles.container}>
+    <View style={styles.card}>
 
-        <Spacer />
-        <ThemedText title={true} style={styles.title}>
-          Register an Account
-        </ThemedText>
+      <Spacer />
+      <ThemedText title style={styles.title}>
+        Create Your Account
+      </ThemedText>
 
-        <Spacer />
+      <ThemedText style={styles.subtitle}>
+        Join Reserve today ✨
+      </ThemedText>
 
-        <ThemedTextInput
-          style={{ marginBottom: 20, width: "80%" }}
-          placeholder="Name"
-          value={name}
-          onChangeText={setName}
-        />
+      <Spacer />
 
-        <View style={styles.dropdownContainer}>
-          <TouchableOpacity
-            style={styles.dropdownButton}
-            onPress={() => setDropdownOpen(!dropdownOpen)}
-          >
-            <ThemedText style={label ? styles.selectedText : styles.placeholderText}>
-              {label || "Select Role"}
-            </ThemedText>
-            <ThemedText style={styles.arrow}>▼</ThemedText>
-          </TouchableOpacity>
+      <ThemedTextInput
+        style={styles.input}
+        placeholder="Name"
+        value={name}
+        onChangeText={setName}
+      />
 
-          {dropdownOpen && (
-            <View style={styles.dropdownMenu}>
-              {LABEL_OPTIONS.map((option) => (
-                <TouchableOpacity
-                  key={option}
-                  style={styles.dropdownItem}
-                  onPress={() => handleSelectLabel(option)}
-                >
-                  <ThemedText style={label === option && styles.selectedOptionText}>
-                    {option}
-                  </ThemedText>
-                </TouchableOpacity>
-              ))}
-            </View>
-          )}
-        </View>
-
-        <ThemedTextInput
-          style={{ marginBottom: 20, width: "80%" }}
-          placeholder="Email"
-          value={email}
-          onChangeText={setEmail}
-          keyboardType="email-address"
-        />
-
-        <ThemedTextInput
-          style={{ marginBottom: 20, width: "80%" }}
-          placeholder="Password"
-          value={password}
-          onChangeText={setPassword}
-          secureTextEntry
-        />
-
-        <ThemedButton onPress={handleSubmit}>
-          <Text style={{ color: '#f2f2f2' }}>Register</Text>
-        </ThemedButton>
-
-        <Spacer />
-        {error && <Text style={styles.error}>{error}</Text>}
-
-        <Spacer height={100} />
-        <Link href="/login" replace>
-          <ThemedText style={{ textAlign: "center" }}>
-            Login instead
+      {/* ROLE DROPDOWN */}
+      <View style={styles.dropdownContainer}>
+        <TouchableOpacity
+          style={styles.dropdownButton}
+          onPress={() => setDropdownOpen(!dropdownOpen)}
+        >
+          <ThemedText style={label ? styles.selectedText : styles.placeholderText}>
+            {label || "Select Role"}
           </ThemedText>
-        </Link>
+          <ThemedText style={styles.arrow}>▼</ThemedText>
+        </TouchableOpacity>
 
-      </ThemedView>
-    </TouchableWithoutFeedback>
+        {dropdownOpen && (
+          <View style={styles.dropdownMenu}>
+            {LABEL_OPTIONS.map((option) => (
+              <TouchableOpacity
+                key={option}
+                style={styles.dropdownItem}
+                onPress={() => handleSelectLabel(option)}
+              >
+                <ThemedText style={label === option && styles.selectedOptionText}>
+                  {option}
+                </ThemedText>
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
+      </View>
+
+      <ThemedTextInput
+        style={styles.input}
+        placeholder="Email"
+        value={email}
+        onChangeText={setEmail}
+        keyboardType="email-address"
+      />
+
+      <ThemedTextInput
+        style={styles.input}
+        placeholder="Password"
+        value={password}
+        onChangeText={setPassword}
+        secureTextEntry
+      />
+
+      <ThemedButton onPress={handleSubmit} style={styles.registerButton}>
+        <Text style={{ color: "#f2f2f2" }}>Register</Text>
+      </ThemedButton>
+
+      <Spacer />
+
+      {error && <Text style={styles.error}>{error}</Text>}
+
+      <Spacer height={40} />
+
+      <Link href="/login" replace>
+        <ThemedText style={{ textAlign: "center" }}>
+          Login instead
+        </ThemedText>
+      </Link>
+
+    </View>
+  </ThemedView>
+</TouchableWithoutFeedback>
   )
 }
 
@@ -132,69 +143,124 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     justifyContent: "center",
-    alignItems: "center"
+    alignItems: "center",
+    backgroundColor: "#bcd7f5ff"
   },
+
+  card: {
+    backgroundColor: "#ffffff",
+    width: "85%",
+    paddingVertical: 40,
+    paddingHorizontal: 25,
+    borderRadius: 30,
+    alignItems: "center",
+
+    shadowColor: "#4A90E2",
+    shadowOpacity: 0.15,
+    shadowRadius: 20,
+    shadowOffset: { width: 0, height: 10 },
+    elevation: 8,
+  },
+
   title: {
     textAlign: "center",
-    fontSize: 18,
-    marginBottom: 30
+    fontSize: 26,
+    fontWeight: "600",
+    marginBottom: 10,
+    color: "#1f2937"
   },
+
+  subtitle: {
+    fontSize: 16,
+    opacity: 0.8,
+    marginBottom: 25,
+  },
+
+  input: {
+    width: "90%",
+    backgroundColor: "#F3F6FB",
+    paddingVertical: 14,
+    paddingHorizontal: 18,
+    borderRadius: 20,
+    marginBottom: 18,
+    borderWidth: 1,
+    borderColor: "#e0e7ff",
+  },
+
+  registerButton: {
+    width: "40%",
+    backgroundColor: "#4A90E2",
+    borderRadius: 22,
+    paddingVertical: 14,
+    alignItems: "center",
+  },
+
   error: {
     color: Colors.warning,
     padding: 10,
-    backgroundColor: '#f5c1c8',
+    backgroundColor: "#f5c1c8",
     borderColor: Colors.warning,
     borderWidth: 1,
-    borderRadius: 6,
-    marginHorizontal: 10,
+    borderRadius: 12,
+    marginTop: 10,
+    width: "90%",
+    textAlign: "center",
   },
+
   dropdownContainer: {
-    width: "80%",
-    marginBottom: 20,
+    width: "90%",
+    marginBottom: 18,
     zIndex: 1000,
   },
+
   dropdownButton: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    backgroundColor: "white",
+    backgroundColor: "#F3F6FB",
     borderWidth: 1,
-    borderColor: "#ddd",
-    borderRadius: 8,
-    padding: 15,
+    borderColor: "#e0e7ff",
+    borderRadius: 20,
+    paddingVertical: 14,
+    paddingHorizontal: 18,
   },
+
   placeholderText: {
-    color: "#999",
+    color: "#9CA3AF",
   },
+
   selectedText: {
-    color: "#111",
+    color: "#111827",
   },
+
   arrow: {
     fontSize: 12,
-    color: "#666",
+    color: "#6B7280",
   },
+
   dropdownMenu: {
     position: "absolute",
     top: 55,
     left: 0,
     right: 0,
     backgroundColor: "white",
-    borderRadius: 8,
+    borderRadius: 16,
     borderWidth: 1,
-    borderColor: "#ddd",
+    borderColor: "#e0e7ff",
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowRadius: 10,
+    elevation: 6,
   },
+
   dropdownItem: {
-    padding: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: "#f0f0f0",
+    paddingVertical: 14,
+    paddingHorizontal: 18,
   },
+
   selectedOptionText: {
-    fontWeight: "bold",
-    color: "#007AFF",
+    fontWeight: "600",
+    color: "#4A90E2",
   },
 });

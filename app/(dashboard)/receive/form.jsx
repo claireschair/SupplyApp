@@ -330,7 +330,7 @@ const ReceiveForm = () => {
 
           {selectionMethod === "zip" && (
             <ThemedTextInput
-              style={{ marginBottom: 15, width: "90%", color: '#fff' }}
+              style={styles.input}
               placeholder="Enter Zip Code"
               value={zipCode}
               onChangeText={setZipCode}
@@ -564,5 +564,15 @@ const styles = StyleSheet.create({
     fontSize: 14,
     marginBottom: 10,
     marginTop: 5,
+  },
+  input: {
+    width: "90%",
+    backgroundColor: "#e9f0f9",
+    paddingVertical: 14,
+    paddingHorizontal: 18,
+    borderRadius: 20,
+    marginBottom: 18,
+    borderWidth: 1,
+    borderColor: "#e0e7ff",
   },
 });
